@@ -493,6 +493,7 @@ class App {
 
       const cloudTrades = await res.json();
       if (!Array.isArray(cloudTrades)) return;
+      if (this.authManager?.getUserId && this.authManager.getUserId() !== activeUserId) return;
 
       let changed = false;
 
@@ -586,9 +587,6 @@ class App {
         if (cloudClosedMap.has(pos.id)) {
           // Closed in cloud! Prune from local open
           changed = true;
-        } else if (isFullSync && pos.id && pos.id.startsWith('TRADE-') && !cloudOpenMap.has(pos.id) && cloudClosedMap.size > 0) {
-          // Ghost position from earlier session that is no longer in cloud (only check on full sync)
-          changed = true;
         } else {
           reconciledOpen.push(pos);
         }
@@ -599,7 +597,7 @@ class App {
       for (const [id, ct] of cloudOpenMap.entries()) {
         const exists = this.paperTrader.openPositions.find(p => p.id === id);
         const assetAlreadyOpen = this.paperTrader.openPositions.some(p => p.asset === ct.asset);
-        if (!exists && !assetAlreadyOpen) {
+        if (!exists && !assetAlreadyOpen && !this.paperTrader.trades.some(t => t.id === id)) {
           const entryP = Number(ct.entry_price) || 0;
           const posSz = Number(ct.position_size || 0);
           const notional = +(entryP * posSz).toFixed(2);
@@ -649,17 +647,6 @@ class App {
         const openedAtTime = parsedMeta.openedAt || (ct.created_at ? new Date(ct.created_at).getTime() : Date.now());
         const closedAtTime = parsedMeta.closedAt || (ct.created_at ? new Date(ct.created_at).getTime() : Date.now());
 
-        // Discard if an identical setup has already been recorded for this asset on this date (Anti-Duplicate Guard)
-        const cloudDateStr = new Date(closedAtTime).toDateString();
-        const duplicateSetup = !existsClosed && this.paperTrader.trades.some(t => {
-          const tDateStr = new Date(t.closedAt || t.openedAt || Date.now()).toDateString();
-          return t.asset === ct.asset &&
-            t.direction === ct.direction &&
-            tDateStr === cloudDateStr &&
-            Math.abs(Number(t.entry) - Number(ct.entry_price)) < 0.001;
-        });
-        if (duplicateSetup) continue;
-
         if (!existsClosed) {
           this.paperTrader.trades.unshift({
             id: ct.id,
@@ -690,6 +677,19 @@ class App {
           changed = true;
         } else {
           // If already exists locally, update with the immutable Cloud truth so all browsers match 1:1!
+          for (const [field, value] of Object.entries({
+            pnlUSD: ct.pnl_usd, rMultiple: ct.r_multiple,
+            grossPnLUSD: parsedMeta.grossPnLUSD
+          })) {
+            if (value != null && Number.isFinite(Number(value)) && existsClosed[field] !== Number(value)) {
+              existsClosed[field] = Number(value);
+              changed = true;
+            }
+          }
+          if (ct.result && existsClosed.result !== ct.result) {
+            existsClosed.result = ct.result;
+            changed = true;
+          }
           if (parsedMeta.closedAt && existsClosed.closedAt !== parsedMeta.closedAt) {
             existsClosed.closedAt = parsedMeta.closedAt;
             changed = true;
@@ -702,7 +702,7 @@ class App {
             existsClosed.exitReason = parsedMeta.exitReason;
             changed = true;
           }
-          if (parsedMeta.feesUSD !== undefined && (!existsClosed.feesUSD || existsClosed.feesUSD !== Number(parsedMeta.feesUSD))) {
+          if (parsedMeta.feesUSD !== undefined && existsClosed.feesUSD !== Number(parsedMeta.feesUSD)) {
             existsClosed.feesUSD = Number(parsedMeta.feesUSD);
             existsClosed.totalFeesUSD = Number(parsedMeta.feesUSD);
             existsClosed.brokerageFeeUSD = Number(parsedMeta.brokerageFeeUSD || (existsClosed.feesUSD > 0 ? +(existsClosed.feesUSD / 1.18).toFixed(2) : 0));

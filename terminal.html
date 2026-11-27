@@ -861,44 +861,12 @@
       
     </div>
 
-    <!-- Market Intelligence Hub (Pattern Scan & Macro Radar for Mobile) -->
-    <div class="drawer-section-title d-flex-between">
-      <span>Market Intelligence</span>
-      <span class="d-live-pulse-badge"><span class="live-dot pulse-cyan"></span> LIVE SYNC</span>
-    </div>
-
-    <div class="drawer-radar-hub" id="drawer_radar_hub">
-      <div class="drawer-radar-nav">
-        <button class="d-radar-tab-btn active" id="d_tab_pattern" data-deck-view="hist" type="button">
-          <i class="ph ph-git-commit"></i> Pattern Scan
-        </button>
-        <button class="d-radar-tab-btn" id="d_tab_macro" data-deck-view="news" type="button">
-          <i class="ph ph-broadcast"></i> Macro Radar
-        </button>
-      </div>
-
-      <!-- Pattern Scan Drawer Card -->
-      <div class="d-radar-view active" id="drawer_historical_pattern_card">
-        <div class="d-pattern-header">
-          <div class="d-pattern-title" id="d_pattern_title"><i class="ph ph-git-commit"></i> Regime Pattern Matching</div>
-          <div class="d-pattern-badge" id="d_pattern_badge">Supportive</div>
-        </div>
-        <div class="d-pattern-stats-grid">
-          <div class="d-p-stat"><span class="k">Sample:</span> <span class="v" id="d_stat_sample">84 setups</span></div>
-          <div class="d-p-stat"><span class="k">Win Rate:</span> <span class="v text-bullish" id="d_stat_winrate">64.3%</span></div>
-          <div class="d-p-stat"><span class="k">Avg RR:</span> <span class="v" id="d_stat_rr">1:2.65</span></div>
-          <div class="d-p-stat"><span class="k">Regime:</span> <span class="v text-bullish" id="d_stat_regime">Supportive</span></div>
-        </div>
-        <div class="d-pattern-desc" id="d_pattern_desc">
-          Evaluating similar discount pullback behavior following Asian liquidity sweeps.
-        </div>
-      </div>
-
-      <!-- Macro Radar News Drawer List -->
-      <div class="d-radar-view" id="drawer_news_radar_list">
-        <div class="d-macro-empty"><span class="live-dot pulse-green"></span> Live Macro Feed syncing...</div>
-      </div>
-    </div>
+    <nav class="drawer-shortcuts" aria-label="Workspace shortcuts">
+      <button type="button" data-drawer-page="signals"><i class="ph ph-lightning" aria-hidden="true"></i><span>Alpha Signals</span><span class="drawer-count" id="drawer_signals_count">0</span></button>
+      <button type="button" data-drawer-page="positions"><i class="ph ph-briefcase" aria-hidden="true"></i><span>Positions</span><span class="drawer-count" id="drawer_positions_count">0</span></button>
+      <button type="button" data-drawer-page="copilot"><i class="ph ph-chats-circle" aria-hidden="true"></i><span>AI Copilot</span></button>
+      <button type="button" data-drawer-page="settings"><i class="ph ph-sliders" aria-hidden="true"></i><span>System Settings</span></button>
+    </nav>
 
     <div class="drawer-section-title">Navigation & Tools</div>
     <div class="drawer-menu-list">
@@ -926,11 +894,17 @@
         <span>Auto-Pilot Execution</span>
         <span class="d-toggle-badge" id="d_autopilot_badge">OFF</span>
       </button>
+      <button class="drawer-menu-item" type="button" data-drawer-action="btn_autopilot_settings">
+        <i class="ph ph-gear item-ico"></i><span>Auto-Pilot Settings</span><i class="ph ph-arrow-right arr-ico"></i>
+      </button>
 
       <button class="drawer-menu-item" id="d_toggle_voice" type="button">
         <i class="ph ph-speaker-high item-ico cyan"></i>
         <span>Hinglish Audio Copilot</span>
         <span class="d-toggle-badge active" id="d_voice_badge">ON</span>
+      </button>
+      <button class="drawer-menu-item" type="button" data-drawer-action="header_logout_btn">
+        <i class="ph ph-sign-out item-ico"></i><span>Sign Out / Switch Account</span>
       </button>
     </div>
 
@@ -1812,12 +1786,6 @@
         <!-- TradingView Widget & Overlays dynamically injected here -->
       </div>
 
-      <div class="chart-hud-overlay bottom-right" aria-hidden="true">
-        <div class="hud-pill hud-target">
-          <i class="ph-bold ph-crosshair" style="color: #06b6d4;"></i>
-          <span>ASYMMETRIC TARGET: +3.00R</span>
-        </div>
-      </div>
 
         <!-- Pinned Slim Avionics Intelligence Ticker Bar (Always sleek 36px, gives 100% full height to chart) -->
         <div class="chart-intelligence-bar" id="chart_intelligence_bar">
@@ -2489,6 +2457,16 @@
             </div>
           </div>
 
+          <section class="settings-card" aria-labelledby="about_sunday_title">
+            <div class="settings-card-header">
+              <h3 class="settings-card-title" id="about_sunday_title">About SUNDAY</h3>
+            </div>
+            <div class="settings-field-label-group">
+              <p class="settings-field-name">Built by Hemant Saurkhiya &amp; Abhishek Rajput</p>
+              <p class="settings-field-desc">SUNDAY tracks crypto prices and identifies possible trade setups. You can practice with a virtual balance, set risk limits, and review your positions and trade history in the Passbook.</p>
+              <p class="settings-field-desc">Auto-Pilot simulates entries and exits using your settings. All trades use virtual funds. SUNDAY does not place real exchange orders or provide personalized investment advice.</p>
+            </div>
+          </section>
           <div class="settings-card">
             <div class="settings-card-header">
               <span class="settings-card-title"><i class="ph ph-palette"></i> Appearance</span>
@@ -2593,16 +2571,6 @@
               </select>
             </div>
           </div>
-          <section class="settings-card" aria-labelledby="about_sunday_title">
-            <div class="settings-card-header">
-              <h3 class="settings-card-title" id="about_sunday_title">About SUNDAY</h3>
-            </div>
-            <div class="settings-field-label-group">
-              <p class="settings-field-name">Built by Hemant Saurkhiya &amp; Abhishek Rajput</p>
-              <p class="settings-field-desc">SUNDAY tracks crypto prices and identifies possible trade setups. You can practice with a virtual balance, set risk limits, and review your positions and trade history in the Passbook.</p>
-              <p class="settings-field-desc">Auto-Pilot simulates entries and exits using your settings. All trades use virtual funds. SUNDAY does not place real exchange orders or provide personalized investment advice.</p>
-            </div>
-          </section>
         </div>
       </div>
 

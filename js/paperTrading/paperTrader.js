@@ -119,95 +119,20 @@ export class PaperTrader {
             }
           });
 
-          // Count occurrences of identical setups using dynamic precision to protect micro & sub-dollar coins
-          const signatureCounts = {};
-          parsed.forEach(t => {
-            const entryStr = this.formatDynamicPrice(t.entry);
-            const exitStr = this.formatDynamicPrice(t.target || t.exitPrice);
-            const sig = `${t.asset}_${t.direction}_${entryStr}_${exitStr}`;
-            signatureCounts[sig] = (signatureCounts[sig] || 0) + 1;
+          // Execution IDs identify fills even when prices and timestamps coincide.
+          const seen = new Set();
+          const clean = parsed.filter(trade => {
+            if (!trade.id) return true;
+            if (seen.has(trade.id)) return false;
+            seen.add(trade.id);
+            return true;
           });
-
-          const seenSignatures = {};
-          // Identify any rapid glitch loop, dummy test or duplicate trades
-          const isGlitchLoopTrade = (t) => {
-            // 1. Purge any dummy or test rows permanently
-            if (t.id && (t.id.toLowerCase().includes('test') || t.id.toLowerCase().includes('bat'))) return true;
-            if (t.asset === 'BTC' && Number(t.entry) === 60000) return true;
-            if (t.asset === 'ETH' && Number(t.entry) === 3000 && Math.abs(Number(t.pnlUSD || 0)) < 0.01) return true;
-            if (t.result === 'LIQUIDATED' && Number(t.pnlUSD || 0) === 0) return true;
-
-            const duration = (t.closedAt || 0) - (t.openedAt || 0);
-            if ((t.result === 'LOSS' || t.result === 'LIQUIDATED') && duration < 120000 && duration > 0 && Math.abs(Number(t.pnlUSD || 0)) === 0) return true;
-
-            // Specific known runaway glitch loops (XRP, NEAR, DOGE, LINK dummy glitch)
-            if (t.asset === 'XRP' && Math.abs(Number(t.entry) - 1.332) < 0.05) return true;
-            if (t.asset === 'NEAR' && Math.abs(Number(t.entry) - 5.032) < 0.05) return true;
-            if (t.asset === 'DOGE' && Math.abs(Number(t.entry) - 0.0795) < 0.01) return true;
-            if (t.asset === 'LINK' && (Number(t.exitPrice) > 50 || Number(t.pnlUSD) > 500)) return true;
-            if (Number(t.rMultiple) > 30 || (Number(t.riskUSD) > 0 && Number(t.pnlUSD) / Number(t.riskUSD) > 30)) return true;
-
-            // Universal Same-Day Setup Deduplicator:
-            // If the exact same setup (Asset + Direction + Entry + Exit) appears more than once on the same date,
-            // keep the FIRST canonical instance and purge any duplicate re-audit ghosts.
-            const closedDate = t.closedAt ? new Date(t.closedAt).toDateString() : (t.openedAt ? new Date(t.openedAt).toDateString() : '');
-            const entryStr = this.formatDynamicPrice(t.entry);
-            const exitStr = this.formatDynamicPrice(t.target || t.exitPrice);
-            const sig = `${closedDate}_${t.asset}_${t.direction}_${entryStr}_${exitStr}`;
-
-            seenSignatures[sig] = (seenSignatures[sig] || 0) + 1;
-            if (seenSignatures[sig] > 1) {
-              return true; // Duplicate copy of the same trade setup!
-            }
-
-            if (duration < 15000 && Math.abs(Number(t.pnlUSD || 0)) > 0) return true;
-            return false;
-          };
-
-          // If the ledger was corrupted by the runaway 1,000+ trade glitch loop
-          const hasRunawayGlitch = parsed.length > 50 && (parsed.filter(t => t.result === 'LOSS' || t.result === 'LIQUIDATED').length / parsed.length) > 0.8;
-
-          let clean = [];
-          if (hasRunawayGlitch) {
-            // Completely wipe the runaway loop corruption
-            clean = parsed.filter(t => !isGlitchLoopTrade(t) && !t.id?.startsWith('TRADE-'));
-          } else {
-            clean = parsed.filter(t => !isGlitchLoopTrade(t));
-          }
-
           if (clean.length !== parsed.length) {
             localStorage.setItem(this.storageKey, JSON.stringify(clean));
-            const netRealized = +clean.reduce((acc, t) => acc + (Number(t.pnlUSD) || 0), 0).toFixed(2);
-            this.balance = Math.max(2000, +(2000 + netRealized).toFixed(2));
-            localStorage.setItem(this.balanceStorageKey, this.balance.toFixed(2));
-            console.log(`[PaperTrader] Auto-purged ${parsed.length - clean.length} glitch loop trades. Balance restored to $${this.balance}`);
+            const net = clean.filter(t => t.status === 'CLOSED')
+              .reduce((sum, t) => sum + (Number(t.pnlUSD) || 0), 0);
+            localStorage.setItem(this.balanceStorageKey, (this.initialBalance + net).toFixed(2));
           }
-
-          // AUTO-HEALING MIGRATION: Correct any downtime catchup trades that received bulk 06:08 PM timestamps
-          let healedAny = false;
-          clean.forEach(t => {
-            if (!t.closedAt) return;
-            const d = new Date(t.closedAt);
-            const isNov2_608 = d.getFullYear() === 2026 && d.getMonth() === 10 && d.getDate() === 2 && d.getHours() === 18 && (d.getMinutes() >= 6 && d.getMinutes() <= 10);
-            if (isNov2_608) {
-              if (t.asset === 'SOL') {
-                // Set true historical exit time: 02:15 PM (14:15)
-                t.closedAt = new Date(2026, 10, 2, 14, 15, 0).getTime();
-                healedAny = true;
-              } else if (t.asset === 'XRP') {
-                // Set true historical exit time: 04:30 PM (16:30)
-                t.closedAt = new Date(2026, 10, 2, 16, 30, 0).getTime();
-                healedAny = true;
-              }
-            }
-          });
-
-          if (healedAny) {
-            clean.sort((a, b) => (b.closedAt || 0) - (a.closedAt || 0));
-            localStorage.setItem(this.storageKey, JSON.stringify(clean));
-            console.log('[PaperTrader] Auto-healed Nov 2 downtime timestamps: SOL (02:15 PM) & XRP (04:30 PM).');
-          }
-
           return clean;
         }
       } catch (e) {
@@ -677,7 +602,7 @@ export class PaperTrader {
         if (!this.openPositions.some(p => p.id === pos.id)) return;
 
         // Anti-Duplicate Firewall: If trade for this setup or position ID is already closed in ledger, never re-audit
-        if (this.trades.some(t => t.id === pos.id || (t.asset === pos.asset && t.direction === pos.direction && Math.abs((t.openedAt || 0) - (pos.openedAt || 0)) < 60000))) {
+        if (this.trades.some(t => t.id === pos.id)) {
           this.openPositions = this.openPositions.filter(p => p.id !== pos.id);
           return;
         }
@@ -905,12 +830,6 @@ export class PaperTrader {
   }
 
   getFinancialLedger(filterMonth = 'ALL') {
-    // Dynamic In-Memory Self-Healing: If runaway glitch trades detected in this.trades, wipe them immediately
-    if (this.trades.length > 50 && (this.trades.filter(t => t.result === 'LOSS' || t.result === 'LIQUIDATED').length / this.trades.length) > 0.8) {
-      this.trades = [];
-      this.balance = 2000.0;
-      this.save();
-    }
     const closed = this.trades.filter(t => t.status === 'CLOSED');
     
     const now = new Date();

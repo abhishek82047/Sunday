@@ -351,7 +351,8 @@ export class TerminalUI {
     // Mobile Asset Pill: Tap to open Watchlist & Quick Search Hub
     const mobileAssetPill = document.getElementById('mobile_asset_pill');
     if (mobileAssetPill) {
-      mobileAssetPill.addEventListener('click', () => {
+      mobileAssetPill.addEventListener('click', (event) => {
+        event.stopPropagation();
         const watchlistBtn = document.getElementById('watchlist_tray_btn');
         if (watchlistBtn) watchlistBtn.click();
       });
@@ -376,31 +377,25 @@ export class TerminalUI {
       });
     }
 
-    // Drawer Market Intelligence Radar (Pattern Scan ⇄ Macro Radar)
-    const dTabPattern = document.getElementById('d_tab_pattern');
-    const dTabMacro = document.getElementById('d_tab_macro');
-    const dPatternCard = document.getElementById('drawer_historical_pattern_card');
-    const dMacroCard = document.getElementById('drawer_news_radar_list');
+    drawer?.querySelectorAll('[data-drawer-page]').forEach(button => {
+      button.addEventListener('click', () => {
+        closeMobileDrawer();
+        this.switchPage(button.dataset.drawerPage);
+      });
+    });
 
-    if (dTabPattern && dTabMacro) {
-      dTabPattern.addEventListener('click', () => {
-        dTabPattern.classList.add('active');
-        dTabMacro.classList.remove('active');
-        if (dPatternCard) dPatternCard.classList.add('active');
-        if (dMacroCard) dMacroCard.classList.remove('active');
+    document.querySelectorAll('[data-drawer-action]').forEach(button => {
+      button.addEventListener('click', () => {
+        closeMobileDrawer();
+        document.getElementById(button.dataset.drawerAction)?.click();
       });
-      dTabMacro.addEventListener('click', () => {
-        dTabMacro.classList.add('active');
-        dTabPattern.classList.remove('active');
-        if (dMacroCard) dMacroCard.classList.add('active');
-        if (dPatternCard) dPatternCard.classList.remove('active');
-      });
-    }
+    });
 
     // Drawer Menu Navigation Actions
     const dOpenSearch = document.getElementById('d_open_search');
     if (dOpenSearch) {
-      dOpenSearch.addEventListener('click', () => {
+      dOpenSearch.addEventListener('click', (event) => {
+        event.stopPropagation();
         closeMobileDrawer();
         const watchlistBtn = document.getElementById('watchlist_tray_btn');
         if (watchlistBtn) watchlistBtn.click();
@@ -536,6 +531,19 @@ export class TerminalUI {
     const watchlistTrayPopover = document.getElementById('watchlist_tray_popover');
 
     const watchlistSearchInput = document.getElementById('watchlist_tray_search_input');
+
+    // Keep the mobile sheet outside the hidden ticker and frosted header.
+    if (watchlistTrayWrapper) {
+      const anchor = document.createComment('watchlist');
+      watchlistTrayWrapper.before(anchor);
+      const mobile = window.matchMedia('(max-width: 900px)');
+      const placeWatchlist = () => {
+        if (mobile.matches) document.body.append(watchlistTrayWrapper);
+        else anchor.after(watchlistTrayWrapper);
+      };
+      placeWatchlist();
+      mobile.addEventListener('change', placeWatchlist);
+    }
 
     if (watchlistTrayBtn && watchlistTrayWrapper) {
       watchlistTrayBtn.addEventListener('click', (e) => {
@@ -3137,10 +3145,7 @@ export class TerminalUI {
         ${itemsHtml}
       `;
 
-      const drawerNewsContainer = document.getElementById('drawer_news_radar_list');
-      if (drawerNewsContainer) {
-        drawerNewsContainer.innerHTML = itemsHtml;
-      }
+
     }
 
     // Historical Pattern Card (Live Quantitative Scanner)
@@ -3173,22 +3178,7 @@ export class TerminalUI {
         </div>
       `;
 
-      const dHistCard = document.getElementById('drawer_historical_pattern_card');
-      if (dHistCard) {
-        dHistCard.innerHTML = `
-          <div class="d-pattern-header">
-            <div class="d-pattern-title"><i class="ph ph-git-commit"></i> ${historicalContext.patternName}</div>
-            <div class="d-pattern-badge ${historicalContext.contextTag === 'Supportive' ? 'text-bullish' : 'text-warning'}">${historicalContext.contextTag}</div>
-          </div>
-          <div class="d-pattern-stats-grid">
-            <div class="d-p-stat"><span class="k">Sample:</span> <span class="v">${historicalContext.sampleSize} setups</span></div>
-            <div class="d-p-stat"><span class="k">Win Rate:</span> <span class="v text-bullish">${historicalContext.historicalWinRate}%</span></div>
-            <div class="d-p-stat"><span class="k">Avg RR:</span> <span class="v">1:${historicalContext.expectedRR}</span></div>
-            <div class="d-p-stat"><span class="k">Live Scan:</span> <span class="v">${liveClock}</span></div>
-          </div>
-          <div class="d-pattern-desc">${historicalContext.explanation}</div>
-        `;
-      }
+
     }
   }
 
@@ -3777,6 +3767,8 @@ export class TerminalUI {
 
   updateSignalsBadge(count = 0) {
     const navBadge = document.getElementById('saas_signals_badge');
+    const drawerBadge = document.getElementById('drawer_signals_count');
+    if (drawerBadge) drawerBadge.textContent = count;
     const headerPill = document.getElementById('header_signals_count');
     if (navBadge) {
       navBadge.textContent = count;
@@ -5157,6 +5149,8 @@ export class TerminalUI {
     const countEl = document.getElementById('desk_stat_count');
     const closeAllBtn = document.getElementById('positions_page_close_all_btn');
     const navBadge = document.getElementById('saas_pos_badge');
+    const drawerBadge = document.getElementById('drawer_positions_count');
+    if (drawerBadge) drawerBadge.textContent = list.length;
 
     if (navBadge) navBadge.textContent = list.length;
     if (countEl) countEl.textContent = list.length;
