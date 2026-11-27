@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PROJECT SUNDAY — Split-Screen Terminal Authentication</title>
+  <meta name="description" content="Sign in, create an account, or launch a zero-risk 1-click guest trading session on Project SUNDAY.">
+
+  <!-- Phosphor Icons -->
+  <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
+  <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/bold/style.css">
+  <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/fill/style.css">
+
+  <!-- Stylesheets -->
+
+  <!-- Supabase JS Client & Project Config -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- Three.js Native ESM Importmap for Zero-Lag 3D Terrain -->
+
+
+  <style>.hero-3d-canvas-wrap{z-index:1;pointer-events:none;opacity:.85;position:absolute;inset:0;overflow:hidden}.auth-page-container{min-height:100vh;padding:var(--space-4);z-index:10;justify-content:center;align-items:center;display:flex;position:relative}.auth-split-wrapper{border-radius:var(--radius-lg);border:1px solid var(--glass-border-hi);background:rgb(var(--paper,13 15 23) / .85);width:100%;max-width:1180px;-webkit-backdrop-filter:var(--glass-blur);backdrop-filter:var(--glass-blur);box-shadow:var(--elevation-3);grid-template-columns:1fr;display:grid;overflow:hidden}@media (width>=960px){.auth-split-wrapper{grid-template-columns:1.15fr .85fr}}.auth-left-hero{padding:var(--space-6);border-right:1px solid var(--glass-border);justify-content:space-between;gap:var(--space-4);background:linear-gradient(135deg,#10b9810d 0%,#06b6d40a 50%,#8b5cf60d 100%);flex-direction:column;display:flex}.auth-right-form{padding:var(--space-6);flex-direction:column;justify-content:center;display:flex}.auth-field-group{margin-bottom:var(--space-3);flex-direction:column;gap:6px;display:flex}.auth-field-group label{font-size:var(--text-xs);color:var(--text-mid);text-transform:uppercase;letter-spacing:var(--tracking-wide);font-weight:600}.auth-input-control{border-radius:var(--radius-sm);background:rgb(var(--paper,0 0 0) / .45);border:1px solid var(--glass-border);width:100%;color:var(--text-hi);font-size:var(--text-body-sm);transition:border-color var(--dur-micro) var(--ease-entrance);outline:none;padding:12px 16px}.auth-input-control:focus{border-color:var(--cyan);box-shadow:0 0 12px var(--cyan-glow)}.radar-stream-box{background:rgb(var(--paper,0 0 0) / .35);border:1px solid var(--glass-border);border-radius:var(--radius-md);padding:var(--space-3);flex-direction:column;gap:12px;display:flex}.radar-row{align-items:center;gap:12px;display:flex}.guest-risk-overlay{z-index:99999;background:radial-gradient(circle at 50% 35%, #06b6d414 0%, rgb(var(--paper,3 7 18) / .82) 55%, rgb(var(--paper,2 4 10) / .94) 100%);-webkit-backdrop-filter:blur(32px)saturate(190%);justify-content:center;align-items:center;padding:20px;animation:.28s cubic-bezier(.16,1,.3,1) modalFadeIn;display:flex;position:fixed;inset:0}.guest-risk-modal-wrap{width:100%;max-width:530px;position:relative}.guest-risk-modal-wrap:before{content:"";filter:blur(28px);opacity:.65;pointer-events:none;z-index:-1;background:linear-gradient(135deg,#06b6d44d 0%,#3b82f633 40%,#8b5cf640 80%,#10b98126 100%);border-radius:26px;animation:8s ease-in-out infinite alternate pulseAura;position:absolute;inset:-2px}@keyframes pulseAura{0%{opacity:.45;transform:scale(.98)}to{opacity:.75;transform:scale(1.02)}}.guest-risk-modal{background:linear-gradient(145deg, rgb(var(--paper,17 24 39) / .72) 0%, rgb(var(--paper,10 15 26) / .86) 100%);border:1px solid rgb(var(--line,255 255 255) / .14);border-top:1px solid rgb(var(--line,255 255 255) / .32);border-radius:22px;flex-direction:column;width:100%;display:flex;position:relative;overflow:hidden;box-shadow:0 30px 80px -15px #000000e6,inset 0 0 0 1px #ffffff0d,inset 0 1px #ffffff40}.guest-risk-modal:after{content:"";background:linear-gradient(90deg, transparent, #06b6d4cc, rgb(var(--line,255 255 255) / .9), #8b5cf6cc, transparent);pointer-events:none;height:1px;position:absolute;top:0;left:15%;right:15%}.guest-risk-header{border-bottom:1px solid rgb(var(--line,255 255 255) / .07);background:rgb(var(--line,255 255 255) / .015);justify-content:space-between;align-items:center;padding:22px 26px 18px;display:flex}.risk-badge-icon{color:#fbbf24;background:linear-gradient(135deg,#f59e0b2e 0%,#06b6d414 100%);border:1px solid #f59e0b59;border-radius:13px;flex-shrink:0;justify-content:center;align-items:center;width:44px;height:44px;font-size:1.4rem;display:flex;box-shadow:0 0 20px #f59e0b33,inset 0 1px #fff3}.guest-risk-title{letter-spacing:-.015em;color:var(--ink,#fff);margin:0;font-family:Space Grotesk,-apple-system,sans-serif;font-size:1.16rem;font-weight:700}.guest-risk-subtitle{color:var(--muted,#94a3b8d9);letter-spacing:.01em;margin-top:3px;font-size:.77rem}.guest-risk-body{flex-direction:column;gap:15px;padding:22px 26px;display:flex}.field-label-row{justify-content:space-between;align-items:center;margin-bottom:7px;display:flex}.field-label-pill{text-transform:uppercase;letter-spacing:.08em;color:var(--accent,#06b6d4);align-items:center;gap:6px;font-size:.72rem;font-weight:700;display:flex}.field-label-pill .dot{background:#06b6d4;border-radius:50%;width:6px;height:6px;box-shadow:0 0 8px #06b6d4}.glass-input-wrapper{align-items:center;display:flex;position:relative}.glass-input-icon{color:var(--muted,#94a3b8b3);pointer-events:none;font-size:1.15rem;transition:color .2s;position:absolute;left:16px}.glass-input-control{box-sizing:border-box;background:rgb(var(--line,255 255 255) / .035);border:1px solid rgb(var(--line,255 255 255) / .1);width:100%;color:var(--ink,#fff);letter-spacing:.01em;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);border-radius:12px;outline:none;padding:13px 18px 13px 46px;font-family:Space Grotesk,-apple-system,sans-serif;font-size:.92rem;transition:all .25s cubic-bezier(.16,1,.3,1);box-shadow:inset 0 2px 8px #0000004d}.glass-input-control::placeholder{color:var(--muted,#94a3b873)}.glass-input-control:focus{background:#06b6d40b;border-color:#06b6d4b3;box-shadow:0 0 0 3px #06b6d429,0 0 25px #06b6d440,inset 0 2px 8px #0006}.glass-input-wrapper:focus-within .glass-input-icon{color:var(--accent,#06b6d4)}.risk-disclosure-card{background:rgb(var(--paper,0 0 0) / .4);border:1px solid #f59e0b38;border-radius:14px;flex-direction:column;gap:10px;padding:14px 16px;display:flex;box-shadow:inset 0 4px 16px #0006}.risk-disclosure-header{text-transform:uppercase;letter-spacing:.08em;color:#f59e0b;align-items:center;gap:7px;font-size:.72rem;font-weight:700;display:flex}.risk-scroll-content{flex-direction:column;gap:8px;max-height:140px;padding-right:6px;display:flex;overflow-y:auto}.risk-scroll-content::-webkit-scrollbar{width:4px}.risk-scroll-content::-webkit-scrollbar-track{background:rgb(var(--line,255 255 255) / .03);border-radius:4px}.risk-scroll-content::-webkit-scrollbar-thumb{background:#f59e0b59;border-radius:4px}.risk-scroll-content::-webkit-scrollbar-thumb:hover{background:#f59e0b99}.risk-clause-row{color:var(--ink,#cbd5e1d9);align-items:flex-start;gap:10px;font-size:.75rem;line-height:1.55;display:flex}.risk-clause-badge{color:#fbbf24;background:#f59e0b26;border:1px solid #f59e0b4d;border-radius:5px;flex-shrink:0;justify-content:center;align-items:center;width:18px;height:18px;margin-top:1px;font-size:.65rem;font-weight:700;display:flex}.risk-clause-text strong{color:var(--ink,#fff);font-weight:600}.risk-checkbox-card{cursor:pointer;background:rgb(var(--line,255 255 255) / .02);border:1px solid rgb(var(--line,255 255 255) / .08);-webkit-user-select:none;user-select:none;border-radius:12px;align-items:flex-start;gap:12px;padding:12px 14px;transition:all .2s;display:flex}.risk-checkbox-card:hover{background:rgb(var(--line,255 255 255) / .04);border-color:#06b6d459;box-shadow:0 0 16px #06b6d41a}.custom-glass-checkbox{accent-color:#06b6d4;cursor:pointer;border-radius:6px;flex-shrink:0;width:18px;height:18px;margin-top:2px}.risk-checkbox-desc{color:var(--ink,#cbd5e1e0);font-size:.77rem;line-height:1.48}.risk-checkbox-desc strong{color:var(--ink,#fff)}.guest-risk-footer{border-top:1px solid rgb(var(--line,255 255 255) / .07);background:rgb(var(--paper,0 0 0) / .25);justify-content:flex-end;align-items:center;gap:14px;padding:16px 26px;display:flex}.btn-glass-dismiss{color:var(--muted,#94a3b8d9);cursor:pointer;background:0 0;border:1px solid #0000;border-radius:10px;padding:11px 18px;font-size:.84rem;font-weight:500;text-decoration:none;transition:all .2s}.btn-glass-dismiss:hover{color:var(--ink,#fff);background:rgb(var(--line,255 255 255) / .05);border-color:rgb(var(--line,255 255 255) / .1)}.btn-billion-launch{letter-spacing:.01em;border:1px solid rgb(var(--line,255 255 255) / .15);cursor:not-allowed;opacity:.45;background:rgb(var(--line,255 255 255) / .06);color:var(--ink,#ffffff73);border-radius:12px;align-items:center;gap:8px;padding:12px 24px;font-family:Space Grotesk,-apple-system,sans-serif;font-size:.9rem;font-weight:700;transition:all .3s cubic-bezier(.16,1,.3,1);display:inline-flex;position:relative;overflow:hidden}.btn-billion-launch.unlocked{cursor:pointer;opacity:1;color:var(--ink,#fff);border:1px solid rgb(var(--line,255 255 255) / .4);background:linear-gradient(135deg,#06b6d4 0%,#3b82f6 50%,#8b5cf6 100%);box-shadow:0 8px 24px -4px #06b6d480,0 0 20px #3b82f659,inset 0 1px #fff6}.btn-billion-launch.unlocked:hover{transform:translateY(-2px);box-shadow:0 12px 30px -4px #06b6d4a6,0 0 28px #8b5cf673,inset 0 1px #fff9}.btn-billion-launch.unlocked:after{content:"";background:linear-gradient(60deg, transparent, rgb(var(--line,255 255 255) / .25), transparent);width:200%;height:200%;animation:4s infinite btnShimmer;position:absolute;top:-50%;left:-50%;transform:rotate(25deg)}@keyframes btnShimmer{0%{transform:translate(-100%)rotate(25deg)}30%,to{transform:translate(100%)rotate(25deg)}}.risk-modal-close{color:var(--muted,#94a3b8b3);cursor:pointer;background:0 0;border:none;border-radius:8px;justify-content:center;align-items:center;padding:6px;font-size:1.25rem;transition:all .15s;display:flex}.risk-modal-close:hover{color:var(--ink,#fff);background:rgb(var(--line,255 255 255) / .08)}@keyframes modalFadeIn{0%{opacity:0;transform:scale(.97)}to{opacity:1;transform:scale(1)}}</style>
+  <script src="/appearance.js"></script>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.160.0/build/three.module.js"
+    }
+  }
+  </script>
+  <script type="module" crossorigin src="/assets/auth-CqBvPgq9.js"></script>
+  <link rel="modulepreload" crossorigin href="/assets/authManager-CCfLVrnX.js">
+  <link rel="modulepreload" crossorigin href="/assets/cursorGlow-BlDMwQNk.js">
+  <link rel="modulepreload" crossorigin href="/assets/smoothScroll-DaU70us6.js">
+  <link rel="modulepreload" crossorigin href="/assets/supabaseConfig-D6mQf38Z.js">
+  <link rel="modulepreload" crossorigin href="/assets/hero3D-DAQn3Amp.js">
+  <link rel="modulepreload" crossorigin href="/assets/sfx-BD73uRAY.js">
+  <link rel="stylesheet" crossorigin href="/assets/cursorGlow-C5b93eH9.css">
+  <link rel="stylesheet" crossorigin href="/assets/smoothScroll-lxANa7Jc.css">
+  <link rel="stylesheet" crossorigin href="/assets/components-BwzQZAbq.css">
+</head>
+<body>
+
+  <!-- Ambient Dynamic Background -->
+  <div class="ambient-background-layer">
+    <div class="hero-3d-canvas-wrap" id="auth_canvas_3d"></div>
+    <div class="ambient-orb orb-violet"></div>
+    <div class="ambient-orb orb-cyan"></div>
+    <div class="ambient-orb orb-emerald"></div>
+    <div class="ambient-grid"></div>
+    <div class="ambient-noise"></div>
+  </div>
+
+  <!-- Main Split-Screen Container -->
+  <div class="auth-page-container">
+    <div class="auth-split-wrapper">
+      
+      <!-- =====================================================================
+           LEFT HERO SIDE: FINANCIAL INTELLIGENCE & TELEMETRY STREAM
+           ===================================================================== -->
+      <div class="auth-left-hero">
+        
+        <div>
+          <!-- Brand Badge -->
+          <div class="glass-pill" style="margin-bottom: var(--space-3); color: var(--cyan); border-color: var(--cyan-border);">
+            <div class="ai-pulse-dot" style="background: var(--cyan); box-shadow: 0 0 8px var(--cyan);"></div>
+            <span class="text-micro font-display">SUNDAY NEURAL ENGINE v2.5</span>
+          </div>
+
+          <h1 class="text-h1" style="font-size: clamp(1.75rem, 3vw, 2.5rem); margin-bottom: 12px; line-height: 1.15;">
+            The crypto terminal that <br>
+            <span class="text-gradient-institutional">thinks before you execute.</span>
+          </h1>
+
+          <p class="text-body-sm text-mid" style="max-width: 520px; line-height: 1.6;">
+            Institutional liquidity sweeps, autonomous 1:3 asymmetric risk firewalls, and an active Hinglish audio copilot engineered to protect your capital from emotional tilt.
+          </p>
+        </div>
+
+        <!-- Neural Market Telemetry Radar Cockpit -->
+        <div class="radar-stream-box">
+          <div class="flex items-center justify-between" style="border-bottom: 1px solid var(--glass-border); padding-bottom: 8px;">
+            <div class="flex items-center gap-2">
+              <span class="ai-pulse-dot" style="background: var(--profit);"></span>
+              <span class="text-micro text-profit">LIVE TELEMETRY STREAM</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="code-badge text-cyan">⚡ BTC $77,140</span>
+            </div>
+          </div>
+
+          <!-- Row 1: Order Flow -->
+          <div class="radar-row">
+            <div style="width: 34px; height: 34px; border-radius: var(--radius-xs); background: rgba(16, 185, 129, 0.15); display: flex; align-items: center; justify-content: center; color: var(--profit);">
+              <i class="ph-bold ph-chart-polar"></i>
+            </div>
+            <div>
+              <div class="flex items-center gap-2">
+                <span style="font-weight: 600; font-size: 0.85rem; color: var(--text-hi);">Institutional Liquidity Sweep</span>
+                <span class="code-badge text-profit">FVG + SMT CONFIRMED</span>
+              </div>
+              <div class="text-xs text-mid">Smart money accumulation zone triggered across 15M/1H</div>
+            </div>
+          </div>
+
+          <!-- Row 2: Risk Armor -->
+          <div class="radar-row">
+            <div style="width: 34px; height: 34px; border-radius: var(--radius-xs); background: rgba(245, 158, 11, 0.15); display: flex; align-items: center; justify-content: center; color: var(--shield);">
+              <i class="ph-bold ph-shield-check"></i>
+            </div>
+            <div>
+              <div class="flex items-center gap-2">
+                <span style="font-weight: 600; font-size: 0.85rem; color: var(--text-hi);">Quantitative Risk Firewall</span>
+                <span class="code-badge text-shield">1.0% HARD STOP</span>
+              </div>
+              <div class="text-xs text-mid">Strict 1:3.0 asymmetric R-multiple &bull; Zero emotional tilt</div>
+            </div>
+          </div>
+
+          <!-- Row 3: Audio Voice Sentinel -->
+          <div class="radar-row">
+            <div style="width: 34px; height: 34px; border-radius: var(--radius-xs); background: rgba(139, 92, 246, 0.15); display: flex; align-items: center; justify-content: center; color: var(--violet);">
+              <i class="ph-bold ph-waveform"></i>
+            </div>
+            <div>
+              <div class="flex items-center gap-2">
+                <span style="font-weight: 600; font-size: 0.85rem; color: var(--text-hi);">Neural Audio Copilot (Hinglish)</span>
+                <span class="code-badge text-violet">ACTIVE HUD</span>
+              </div>
+              <div class="text-xs text-violet" style="font-style: italic;">"Bhai, breakout trap confirm ho gaya. Stoploss strictly lock rakho."</div>
+            </div>
+          </div>
+
+          <!-- Confluence Meter -->
+          <div style="border-top: 1px solid var(--glass-border); padding-top: 8px;">
+            <div class="flex justify-between text-micro text-mid" style="margin-bottom: 4px;">
+              <span>NEURAL CONFLUENCE SCORE</span>
+              <span class="text-profit" style="font-weight: 700;">96.4% [GRADE A+]</span>
+            </div>
+            <div style="width: 100%; height: 6px; background: rgba(255, 255, 255, 0.08); border-radius: var(--radius-full); overflow: hidden;">
+              <div style="width: 96.4%; height: 100%; background: linear-gradient(90deg, var(--profit), var(--cyan)); box-shadow: 0 0 10px var(--profit);"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Footer Philosophy Quote -->
+        <div class="text-xs text-low" style="border-top: 1px solid var(--glass-border); padding-top: 10px;">
+          "Amateurs gamble on random predictions. Professionals calculate asymmetric probabilities. SUNDAY bridges the gap."
+        </div>
+
+      </div>
+
+      <!-- =====================================================================
+           RIGHT AUTH CARD: LOGIN / SIGNUP / 1-CLICK GUEST / SAAS ONBOARDING
+           ===================================================================== -->
+      <div class="auth-right-form">
+        
+        <!-- STANDARD AUTH VIEW (Sign In / Register / Google / Guest) -->
+        <div id="standard_auth_view">
+          <div style="margin-bottom: var(--space-4);">
+            <h2 class="text-h2" id="auth_title">Welcome Back</h2>
+            <p class="text-body-sm text-mid" id="auth_sub">
+              Sign in or create an account to synchronize your trading statements.
+            </p>
+          </div>
+
+          <!-- Segmented Tab Switcher -->
+          <div class="segmented-control" style="width: 100%; margin-bottom: var(--space-4);">
+            <button type="button" class="segment-btn active" id="tab_auth_signin" style="flex: 1; text-align: center;">Sign In</button>
+            <button type="button" class="segment-btn" id="tab_auth_signup" style="flex: 1; text-align: center;">Create Account</button>
+          </div>
+
+          <!-- Form -->
+          <form id="auth_form">
+            
+            <!-- Full Name (Only for Signup) -->
+            <div class="auth-field-group" id="group_name" style="display: none;">
+              <label for="auth_name">Full Name</label>
+              <input type="text" id="auth_name" class="auth-input-control" placeholder="Trader Name">
+            </div>
+
+            <!-- Email -->
+            <div class="auth-field-group">
+              <label for="auth_email">Email Address</label>
+              <input type="email" id="auth_email" class="auth-input-control" placeholder="name@domain.com" required>
+            </div>
+
+            <!-- Password -->
+            <div class="auth-field-group">
+              <div class="flex justify-between items-center">
+                <label for="auth_password">Password</label>
+                <a href="#" class="text-xs text-cyan" id="auth_forgot_link">Forgot password?</a>
+              </div>
+              <div style="position: relative;">
+                <input type="password" id="auth_password" class="auth-input-control" placeholder="••••••••" required>
+                <button type="button" id="auth_eye_toggle" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: var(--text-mid); font-size: 1.1rem; background: none; border: none; cursor: pointer;">
+                  <i class="ph ph-eye" id="eye_icon"></i>
+                </button>
+              </div>
+            </div>
+
+            <!-- Submit Button -->
+            <button type="submit" class="btn-primary" id="auth_submit_btn" style="width: 100%; padding: 13px; margin-top: 6px; justify-content: center;">
+              <span id="auth_submit_text">Sign In</span> <i class="ph-bold ph-arrow-right"></i>
+            </button>
+          </form>
+
+          <!-- Divider -->
+          <div style="display: flex; align-items: center; gap: 12px; margin: var(--space-3) 0;">
+            <div style="flex: 1; height: 1px; background: var(--glass-border);"></div>
+            <span class="text-micro text-low">OR</span>
+            <div style="flex: 1; height: 1px; background: var(--glass-border);"></div>
+          </div>
+
+          <!-- Social & Instant Guest Buttons -->
+          <div class="flex flex-col gap-2">
+            
+            <!-- Google OAuth -->
+            <button type="button" class="btn-secondary" id="btn_auth_google" style="width: 100%; justify-content: center;">
+              <svg viewBox="0 0 24 24" width="18" height="18" style="margin-right: 6px;">
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+              </svg>
+              Continue with Google
+            </button>
+
+            <!-- 1-Click Guest Session Trigger -->
+            <button type="button" id="btn_guest_trigger" class="glass-card" style="display: flex; align-items: center; justify-content: center; gap: 8px; padding: 11px; border-radius: var(--radius-full); color: var(--cyan); border-color: var(--cyan-border); font-size: var(--text-body-sm); font-weight: 600; text-align: center; width: 100%; cursor: pointer;">
+              <i class="ph-bold ph-user"></i> Continue as Guest
+            </button>
+
+          </div>
+        </div>
+
+        <!-- =====================================================================
+             SAAS TRADER ONBOARDING & PROFILE SETUP VIEW (Standard SaaS Step)
+             ===================================================================== -->
+        <div id="onboarding_auth_view" style="display: none;">
+          <div style="display: flex; align-items: center; gap: 14px; margin-bottom: var(--space-4); padding-bottom: var(--space-3); border-bottom: 1px solid var(--glass-border);">
+            <div style="position: relative;">
+              <img id="onboard_avatar_img" src="" alt="Avatar" style="width: 52px; height: 52px; border-radius: 50%; border: 2px solid var(--cyan); object-fit: cover; background: #000;">
+              <span style="position: absolute; bottom: 0; right: 0; background: #10b981; border: 2px solid #030712; width: 14px; height: 14px; border-radius: 50%;" title="Google Verified"></span>
+            </div>
+            <div>
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <h3 class="text-h3" style="margin: 0; font-size: 1.15rem;" id="onboard_welcome_name">Welcome, Trader</h3>
+                <span style="background: rgba(6, 182, 212, 0.15); color: var(--cyan); font-size: 0.68rem; padding: 2px 7px; border-radius: 4px; font-weight: 700;">PRO</span>
+              </div>
+              <div style="font-size: 0.78rem; color: var(--text-mid); display: flex; align-items: center; gap: 5px; margin-top: 3px;">
+                <i class="ph-bold ph-seal-check text-cyan"></i> <span id="onboard_email_display">user@gmail.com</span>
+              </div>
+            </div>
+          </div>
+
+          <form id="onboarding_form" style="display: flex; flex-direction: column; gap: var(--space-3);">
+            <!-- Full Name -->
+            <div class="auth-field-group">
+              <label for="onboard_full_name">Your Name</label>
+              <input type="text" id="onboard_full_name" class="auth-input-control" placeholder="e.g. Hemant Saurkhiya" required>
+            </div>
+
+            <!-- Callsign / Nickname for Gabby Audio -->
+            <div class="auth-field-group">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <label for="onboard_callsign">Trader Callsign (Gabby Audio Name)</label>
+                <span style="font-size: 0.68rem; color: var(--cyan); font-weight: 600;">AUDIO HUD</span>
+              </div>
+              <input type="text" id="onboard_callsign" class="auth-input-control" placeholder="e.g. Hemant" required maxlength="24">
+              <span style="font-size: 0.72rem; color: var(--text-low); margin-top: 2px;">
+                Gabby AI Copilot will use this callsign to speak with you during live trades.
+              </span>
+            </div>
+
+            <!-- Direct Password (Optional) -->
+            <div class="auth-field-group">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <label for="onboard_password">Set Password (Optional)</label>
+                <span style="font-size: 0.68rem; color: var(--text-low);">ENABLES DIRECT EMAIL LOGIN</span>
+              </div>
+              <div style="position: relative;">
+                <input type="password" id="onboard_password" class="auth-input-control" placeholder="Create a password for email login (min 6 chars)">
+                <button type="button" id="onboard_pwd_toggle" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-mid); cursor: pointer; font-size: 1.1rem;">
+                  <i class="ph ph-eye" id="onboard_pwd_eye"></i>
+                </button>
+              </div>
+            </div>
+
+            <!-- Market Focus -->
+            <div class="auth-field-group">
+              <label>Primary Market Arena</label>
+              <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
+                <div class="market-chip-btn active" id="chip_market_crypto" data-market="Crypto" style="padding: 8px 4px; text-align: center; border-radius: 8px; font-size: 0.78rem; font-weight: 600; border: 1px solid var(--cyan); background: rgba(6, 182, 212, 0.12); color: var(--cyan); cursor: pointer;">
+                  ⚡ Crypto
+                </div>
+                
+                
+              </div>
+            </div>
+
+            <!-- Mandatory Risk Agreement -->
+            <label class="risk-checkbox-card" style="margin-top: 4px; padding: 10px 14px; border-radius: 10px; background: rgba(255, 255, 255, 0.02); border: 1px solid var(--glass-border); display: flex; gap: 10px; cursor: pointer;">
+              <input type="checkbox" id="chk_onboard_risk" class="custom-glass-checkbox" required checked>
+              <span class="risk-checkbox-desc" style="font-size: 0.72rem; line-height: 1.45;">
+                I understand financial derivatives and equities trading involve capital risk. I agree to <strong>1.0% risk firewalls</strong> and SUNDAY <strong>Regulatory Terms</strong>.
+              </span>
+            </label>
+
+            <!-- Complete Setup CTA Button -->
+            <button type="submit" class="btn-primary" id="btn_complete_onboarding" style="width: 100%; padding: 13px; margin-top: 6px; justify-content: center; font-weight: 700;">
+              <span>Complete Setup & Enter Platform</span> <i class="ph-bold ph-arrow-right"></i>
+            </button>
+          </form>
+        </div>
+
+        <!-- =====================================================================
+             SAAS REDIRECTING / WELCOME BACK VIEW
+             ===================================================================== -->
+        <div id="redirecting_auth_view" style="display: none; text-align: center; padding: var(--space-6) var(--space-2);">
+          <div style="width: 58px; height: 58px; margin: 0 auto var(--space-3); border-radius: 50%; background: rgba(6, 182, 212, 0.12); border: 2px solid var(--cyan); display: flex; align-items: center; justify-content: center;">
+            <i class="ph-bold ph-spinner animate-spin text-cyan" style="font-size: 1.8rem;"></i>
+          </div>
+          <h3 class="text-h3" id="redirect_user_greeting">Welcome back!</h3>
+          <p class="text-body-sm text-mid" style="margin-top: 6px;">
+            Synchronizing neural state and redirecting to Home...
+          </p>
+          <a href="../index.html" class="btn-ghost" style="margin-top: var(--space-4); font-size: 0.8rem; display: inline-flex;">
+            Click here if not redirected automatically &rarr;
+          </a>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       BILLION-DOLLAR GLOSSOMORPHIC ONBOARDING & RISK DISCLOSURE MODAL
+       ========================================================================= -->
+  <div id="modal_guest_risk" class="guest-risk-overlay" style="display: none;">
+    <div class="guest-risk-modal-wrap">
+      <div class="guest-risk-modal">
+        <!-- Header -->
+        <div class="guest-risk-header">
+          <div style="display: flex; align-items: center; gap: 14px;">
+            <div class="risk-badge-icon">
+              <i class="ph-bold ph-shield-check"></i>
+            </div>
+            <div>
+              <h3 class="guest-risk-title">Trader Setup & Regulatory Risk</h3>
+              <div class="guest-risk-subtitle">Establish your trader identity before entering Project SUNDAY Workstation</div>
+            </div>
+          </div>
+          <button type="button" class="risk-modal-close" id="btn_close_guest_risk" aria-label="Close modal">
+            <i class="ph ph-x"></i>
+          </button>
+        </div>
+
+        <!-- Body -->
+        <div class="guest-risk-body">
+          <!-- Trader Name Input -->
+          <div>
+            <div class="field-label-row">
+              <span class="field-label-pill">
+                <span class="dot"></span> TRADER NAME / ALIAS
+              </span>
+              <span style="font-size: 0.68rem; color: rgba(148, 163, 184, 0.6); font-family: 'Space Grotesk', monospace;">MAX 32 CHARS</span>
+            </div>
+            <div class="glass-input-wrapper">
+              <i class="ph ph-user-circle glass-input-icon"></i>
+              <input type="text" id="input_guest_trader_name" class="glass-input-control" placeholder="e.g. Hemant / DeltaTrader" maxlength="32" autocomplete="name">
+            </div>
+            <div style="font-size: 0.7rem; color: rgba(148, 163, 184, 0.65); margin-top: 5px; display: flex; align-items: center; gap: 5px;">
+              <i class="ph ph-sparkle text-cyan" style="font-size: 0.8rem;"></i>
+              <span>Used by SUNDAY AI Copilot to personalize voice greetings & workstation telemetry.</span>
+            </div>
+          </div>
+
+          <!-- Statutory Regulatory & Risk Warning -->
+          <div class="risk-disclosure-card">
+            <div class="risk-disclosure-header">
+              <i class="ph-bold ph-warning-octagon"></i>
+              <span>Statutory Risk Warning & Regulatory Disclaimer</span>
+            </div>
+            <div class="risk-scroll-content">
+              <div class="risk-clause-row">
+                <div class="risk-clause-badge">1</div>
+                <div class="risk-clause-text">
+                  <strong>Extreme Capital & Derivatives Risk:</strong> Trading cryptocurrencies, equities, indices, and derivatives (F&O) involves substantial risk of loss. Market volatility can cause rapid liquidation. You may lose all or more than your committed capital.
+                </div>
+              </div>
+              <div class="risk-clause-row">
+                <div class="risk-clause-badge">2</div>
+                <div class="risk-clause-text">
+                  <strong>Non-Advisory Quantitative Tool:</strong> Project SUNDAY and its algorithmic decision modules are strictly educational, computational modeling, and paper-trading simulation interfaces. Project SUNDAY does <strong>NOT</strong> provide SEBI (India), SEC, or any financial advisory services.
+                </div>
+              </div>
+              <div class="risk-clause-row">
+                <div class="risk-clause-badge">3</div>
+                <div class="risk-clause-text">
+                  <strong>Assumption of Personal Responsibility:</strong> All algorithmic triggers, order executions, and leverage multipliers are executed at your sole discretion. You accept 100% personal liability for all paper and live execution outcomes.
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Mandatory Agreement Checkbox -->
+          <label class="risk-checkbox-card" for="chk_guest_risk_agree">
+            <input type="checkbox" id="chk_guest_risk_agree" class="custom-glass-checkbox">
+            <span class="risk-checkbox-desc">
+              I confirm that I am at least 18 years of age, acknowledge the severe financial risks of market trading, and agree to the <strong>Terms of Service</strong> & <strong>Regulatory Risk Disclosures</strong>.
+            </span>
+          </label>
+        </div>
+
+        <!-- Footer -->
+        <div class="guest-risk-footer">
+          <button type="button" class="btn-glass-dismiss" id="btn_cancel_guest_risk">Cancel</button>
+          <button type="button" class="btn-billion-launch" id="btn_confirm_guest_launch" disabled>
+            <span>Agree & Launch Workstation</span> <i class="ph-bold ph-arrow-right"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+
+
+  <!-- 3D Liquid Volatility Mesh Background (Interactive with Cursor) -->
+</body>
+</html>
+
