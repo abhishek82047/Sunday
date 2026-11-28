@@ -18,6 +18,7 @@ import path from 'path';
 import http from 'http';
 import https from 'https';
 import crypto from 'crypto';
+import { DeltaEntries } from './js/adapters/deltaEntries.js';
 
 // File-backed LocalStorage Polyfill for Node.js
 const storageFile = path.resolve('scratch/daemon_storage.json');
@@ -128,8 +129,9 @@ class MondayAutoPilotDaemon {
           if (row.strategy) {
             try { parsed = JSON.parse(row.strategy); } catch(e) {}
           }
-          const s = parsed || {};
+          const s = { ...parsed, ...parsed?.autopilotSettings };
           const synced = {
+            autoPilotTarget: s.autoPilotTarget || 'website',
             marginUSD: Math.max(5, Math.min(500, parseFloat(s.marginUSD || row.risk_usd) || 100)),
             leverage: Math.max(1, Math.min(50, parseInt(s.leverage || row.reward_usd, 10) || 20)),
             maxTrades: Math.max(1, Math.min(100, parseInt(s.maxTrades || row.position_size, 10) || 5)),
@@ -163,6 +165,7 @@ class MondayAutoPilotDaemon {
       if (raw) {
         const s = JSON.parse(raw);
         this.cachedSettings = {
+          autoPilotTarget: s.autoPilotTarget || 'website',
           minConfluence: Math.max(50, Math.min(95, parseInt(s.minConfluence, 10) || 75)),
           minRR: Math.max(1.5, Math.min(5.0, parseFloat(s.minRR) || 2.0)),
           marginUSD: Math.max(5, Math.min(500, parseFloat(s.marginUSD) || 100)),
@@ -755,6 +758,7 @@ class MondayAutoPilotDaemon {
    */
   async executeSignalFillTrade(sig, currentPrice) {
     const settings = this.getAutoPilotSettings();
+    if (settings.autoPilotTarget === 'delta') return;
     if (settings.autoPilotEnabled === false || this.autoPilotEnabled === false) return;
 
     // Enforce maximum concurrent active basket limit
@@ -831,6 +835,7 @@ class MondayAutoPilotDaemon {
 
   async executeAutonomousTrade(asset, strategyResult, currentPrice) {
     const settings = this.getAutoPilotSettings();
+    if (settings.autoPilotTarget === 'delta') return;
     if (this.paperTrader.openPositions.length >= settings.maxTrades || this.paperTrader.openPositions.some(p => p.asset === asset)) return;
     const dir = strategyResult.direction || 'LONG';
     const levels = strategyResult.levels;
@@ -1056,6 +1061,7 @@ class MondayAutoPilotDaemon {
         });
       });
 
+      req.setTimeout(10000, () => req.destroy(new Error('Delta request timed out')));
       req.on('error', reject);
       if (payload) req.write(payload);
       req.end();
@@ -1099,6 +1105,8 @@ class MondayAutoPilotDaemon {
     return { user, settings };
   }
 
+  deltaEntries = new DeltaEntries();
+
   startHttpServer() {
     const port = process.env.PORT || 10000;
     try {
@@ -1119,6 +1127,14 @@ class MondayAutoPilotDaemon {
             const { user, settings } = await this.getSupabaseUserSettings(req.headers['authorization']);
             const apiKey = settings.delta_api_key;
             const apiSecret = settings.delta_api_secret;
+
+            if (req.url === '/api/delta/autopilot') {
+              const result = await this.deltaEntries.submit(user.id, body,
+                (method, path, payload) => this.deltaIndiaRequest(method, path, apiKey, apiSecret, payload));
+              res.writeHead(200, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ success: true, ...result }));
+              return;
+            }
 
             if (req.url === '/api/delta/test') {
               const data = await this.deltaIndiaRequest('GET', '/v2/wallet/balances', apiKey, apiSecret);

@@ -3340,13 +3340,9 @@
         btn.addEventListener('click', () => {
           const val = adapter.setAutoPilotTarget(btn.getAttribute('data-ap-target'));
           syncAutoPilotTargetUI(val);
+          (window.app || window.__AI_COPILOT_APP__)?.pushSettingsToCloud();
         });
       });
-
-      // Track manual button click so Auto-Pilot calls are 100% distinguished even when strategyResult.reasoning is custom
-      document.getElementById('execute_trade_btn')?.addEventListener('click', () => {
-        window.__sundayManualExecAt = Date.now();
-      }, true);
 
       // 2. Intercept App Trade Execution for Website / Delta / Both (Terminal, Copilot & Auto-Pilot)
       const hookAppExecution = () => {
@@ -3356,10 +3352,7 @@
         const origExecute = app.executeCurrentTrade.bind(app);
 
         app.executeCurrentTrade = async function (customOrder = null) {
-          const isManualBtn = (Date.now() - (window.__sundayManualExecAt || 0)) < 2000;
-          const isAutoPilotOn = Boolean(app.isAutoPilotEnabled || document.getElementById('autopilot_toggle_btn')?.getAttribute('aria-checked') === 'true');
-          const isAutoPilotCall = Boolean(customOrder && !isManualBtn && isAutoPilotOn);
-          const target = isAutoPilotCall ? adapter.getAutoPilotTarget() : adapter.getActiveTarget();
+          const target = adapter.getActiveTarget();
 
           if (target === 'website') {
             return origExecute(customOrder);
@@ -3385,7 +3378,7 @@
             const sl = customOrder?.stopLoss || document.getElementById('order_sl_input')?.value || undefined;
             const tp = customOrder?.target || document.getElementById('order_tp_input')?.value || undefined;
 
-            if (!isAutoPilotCall) {
+            {
               const ok = window.confirm(
                 `Execute LIVE Delta Exchange India Order (${target.toUpperCase()})?\n\n` +
                 `Symbol: ${productSymbol}\n` +
@@ -3537,13 +3530,45 @@
         if (closeAllBtn) closeAllBtn.classList.add('hidden');
       };
 
+      let markSocket;
+      let markSymbols = '';
+      const syncMarkStream = list => {
+        const symbols = list.map(p => 'MARK:' + p.product_symbol).sort();
+        const key = symbols.join(',');
+        if (key === markSymbols && markSocket && markSocket.readyState < WebSocket.CLOSING) return;
+        markSocket?.close();
+        markSocket = null;
+        markSymbols = key;
+        if (!key) return;
+        const socket = new WebSocket('wss://public-socket.india.delta.exchange');
+        markSocket = socket;
+        socket.onopen = () => socket.send(JSON.stringify({ type: 'subscribe', payload: {
+          channels: [{ name: 'mark_price', symbols }]
+        } }));
+        socket.onmessage = ({ data }) => {
+          if (socket !== markSocket || activePositionsSource !== 'delta') return;
+          let tick;
+          try { tick = JSON.parse(data); } catch { return; }
+          if (tick.type !== 'mark_price' || !(Number(tick.p) > 0)) return;
+          const pos = lastDeltaPositions.find(p => 'MARK:' + p.product_symbol === tick.sy);
+          if (!pos) return;
+          pos.mark_price = Number(tick.p);
+          const row = deltaPosContainer.querySelector('[data-mark-symbol="' + CSS.escape(pos.product_symbol) + '"]');
+          if (row) row.textContent = fmtDeltaPrice(pos.mark_price);
+        };
+      };
+
+      let fetchingDeltaPositions = false;
       const loadDeltaPositions = async () => {
-        if (!deltaPosContainer) return;
-        deltaPosContainer.innerHTML = '<div style="padding:24px; text-align:center; color:#94a3b8;">Loading live Delta Exchange India positions...</div>';
+        if (!deltaPosContainer || fetchingDeltaPositions || activePositionsSource !== 'delta') return;
+        fetchingDeltaPositions = true;
+        if (!deltaPosContainer.childElementCount) deltaPosContainer.innerHTML = '<div style="padding:24px; text-align:center; color:#94a3b8;">Loading live Delta Exchange India positions...</div>';
         try {
           const res = await adapter.getPositions();
           const list = (res.positions || []).filter(p => Number(p.size) !== 0);
+          if (activePositionsSource !== 'delta') return;
           lastDeltaPositions = list;
+          syncMarkStream(list);
           updateDeskStatsForDelta(list);
           if (list.length === 0) {
             deltaPosContainer.innerHTML = `
@@ -3587,7 +3612,7 @@
                         <td style="padding:10px 8px;">${Math.abs(sz)}</td>
                         <td style="padding:10px 8px;">$${Number(p.margin || 0).toFixed(2)}</td>
                         <td style="padding:10px 8px;">${fmtDeltaPrice(p.entry_price)}</td>
-                        <td style="padding:10px 8px;">${fmtDeltaPrice(p.mark_price)}</td>
+                        <td data-mark-symbol="${p.product_symbol}" style="padding:10px 8px;">${fmtDeltaPrice(p.mark_price)}</td>
                         <td style="padding:10px 8px; color:#fbbf24;">${p.liquidation_price ? fmtDeltaPrice(p.liquidation_price) : '-'}</td>
                         <td style="padding:10px 8px; color:${pnl >= 0 ? '#34d399' : '#f87171'}; font-weight:700;">${pnl >= 0 ? '+' : ''}$${pnl.toFixed(4)}</td>
                         <td style="padding:10px 8px;">
@@ -3629,12 +3654,23 @@
             });
           });
         } catch (err) {
-          deltaPosContainer.innerHTML = `<div style="padding:24px; text-align:center; color:#f87171;">${err.message}</div>`;
+          deltaPosContainer.textContent = "Delta sync unavailable: " + err.message;
+        } finally {
+          fetchingDeltaPositions = false;
         }
       };
 
+      const refreshVisiblePositions = () => {
+        if (!document.hidden && deltaPosContainer?.getClientRects().length) loadDeltaPositions();
+        else if (markSocket) syncMarkStream([]);
+      };
+      setInterval(refreshVisiblePositions, 3000);
+      window.addEventListener('delta-position-change', refreshVisiblePositions);
+      document.addEventListener('visibilitychange', refreshVisiblePositions);
+
       posWebBtn?.addEventListener('click', () => {
         activePositionsSource = 'website';
+        syncMarkStream([]);
         posWebBtn.style.background = 'rgba(56,189,248,0.22)';
         posWebBtn.style.color = '#38bdf8';
         if (posDeltaBtn) {

@@ -1110,13 +1110,18 @@ class App {
     return true;
   }
 
+  getAutoPilotTarget() {
+    return localStorage.getItem('sunday_autopilot_target_v1') || 'website';
+  }
+
   async scanAndExecuteAutoPilot() {
     if (!this.autoPilotEnabled || this.isAutoPilotScanning) return;
     this.isAutoPilotScanning = true;
 
     try {
       const settings = this.getAutoPilotSettings();
-      const openPositions = this.paperTrader.openPositions;
+      const venue = this.getAutoPilotTarget();
+      const openPositions = venue === 'website' ? this.paperTrader.openPositions : [];
       if (openPositions.length >= settings.maxTrades) return;
 
       // 🛡️ FULL-MARKET PARALLEL SCANNER (All coins evaluated simultaneously)
@@ -1132,7 +1137,7 @@ class App {
 
       // Filter out assets that already have active positions to avoid redundant overhead
       const availableCandidates = candidateAssets.filter(asset =>
-        !this.paperTrader.openPositions.some(p => p.asset === asset)
+        !openPositions.some(p => p.asset === asset)
       );
 
       // 🚀 PARALLEL SWARM EVALUATION: Evaluate all candidate coins simultaneously (<400ms)
@@ -1151,9 +1156,18 @@ class App {
             }
 
             const evalData = await this.evaluateAsset(asset);
-            if (!evalData || !evalData.strategyResult) return null;
+            if (!evalData?.strategyResult || (venue !== 'website' && evalData.isSynthetic)) return null;
 
-            const { strategyResult } = evalData;
+            let { strategyResult } = evalData;
+            const fill = venue !== 'website' && this.deltaSignalFills?.get(asset);
+            if (fill && Date.now() - fill.timestamp < 300000 && strategyResult.direction === fill.signal.direction) {
+              const sig = fill.signal;
+              strategyResult = { ...strategyResult, levels: { ...strategyResult.levels,
+                entry: Number(sig.entryPrice), stopLoss: Number(sig.stopLossPrice),
+                target: Number(sig.takeProfitPrice), rrRatio: Number(sig.riskReward) } };
+            } else if (fill) {
+              this.deltaSignalFills.delete(asset);
+            }
             const proposedDir = strategyResult.direction || 'LONG';
             const entryLvl = strategyResult.levels?.entry;
             const targetLvl = strategyResult.levels?.target;
@@ -1204,9 +1218,11 @@ class App {
 
       for (const setup of eligibleSetups) {
         if (!this.autoPilotEnabled) break;
-        if (this.paperTrader.openPositions.length >= settings.maxTrades) break;
+        if (this.getAutoPilotTarget() !== venue) break;
+        if (venue === 'website' && this.paperTrader.openPositions.length >= settings.maxTrades) break;
         console.log(`[Auto-Pilot Swarm] Autonomous execution triggered for ${setup.asset} (${setup.proposedDir}) at ${setup.confluenceScore}% confluence`);
-        await this.processAutoPilotExecution(setup.asset, setup.proposedDir, setup.strategyResult);
+        const result = await this.processAutoPilotExecution(setup.asset, setup.proposedDir, setup.strategyResult, venue);
+        if (result === 'capacity' && venue === 'delta') break;
       }
     } catch (err) {
       console.error('[Auto-Pilot Scanner Error]:', err);
@@ -1263,7 +1279,7 @@ class App {
         const htfDir = strategyResult.htfTrend?.direction;
         const execDir = dir;
         const directionAligned = (htfDir === 'BULLISH' && execDir === 'LONG') || (htfDir === 'BEARISH' && execDir === 'SHORT');
-        if (directionAligned) {
+        if (directionAligned && this.getAutoPilotTarget() === 'website') {
           this.processAutoPilotExecution(asset, dir, strategyResult);
         } else {
           console.warn(`[HTF Gate / StateTransition] Blocked ${asset} ${execDir}: 1H trend is ${htfDir}.`);
@@ -1297,6 +1313,7 @@ class App {
       const userConfig = {
         userId: effectiveUserId,
         autopilotSettings: apSettings,
+        autoPilotTarget: this.getAutoPilotTarget(),
         autoPilotEnabled: this.autoPilotEnabled,
         watchlist: this.ui?.userWatchlist || JSON.parse(localStorage.getItem('monday_user_watchlist') || '[]'),
         multiLayout: localStorage.getItem('monday_multi_layout') || '1',
@@ -1374,7 +1391,16 @@ class App {
   }
 
   async handleAutoPilotSignalFill(signal) {
+    // Delta entries are owned by the ranked scan, including when a signal fills during evaluation.
     if (!signal || !this.autoPilotEnabled) return;
+    if (this.getAutoPilotTarget() !== 'website') {
+      this.deltaSignalFills ??= new Map();
+      const timestamp = Number(signal.filledAt || signal.issuedAt);
+      if (timestamp > 0 && Date.now() - timestamp < 300000) {
+        this.deltaSignalFills.set(signal.asset, { signal, timestamp });
+      }
+      if (this.getAutoPilotTarget() === 'delta') return;
+    }
     const settings = this.getAutoPilotSettings();
 
     // Check max concurrent trades limit
@@ -1425,7 +1451,7 @@ class App {
     }
   }
 
-  async processAutoPilotExecution(asset, direction, strategyResult) {
+  async processAutoPilotExecution(asset, direction, strategyResult, venue = 'website') {
     // 🔒 ABSOLUTE MASTER KILL-SWITCH: If Auto-Pilot is turned OFF, abort execution immediately
     if (!this.autoPilotEnabled) {
       console.warn(`[Auto-Pilot Master Gate] Blocked execution for ${asset}: Auto-Pilot is switched OFF.`);
@@ -1433,7 +1459,7 @@ class App {
     }
 
     const settings = this.getAutoPilotSettings();
-    const openPositions = this.paperTrader.openPositions;
+    const openPositions = venue === 'website' ? this.paperTrader.openPositions : [];
     const currentOpenCount = openPositions.length;
     const currSym = this.currentMarket === 'India' ? '₹' : '$';
 
@@ -1634,7 +1660,38 @@ class App {
       eventRisk: eventRisk.level || 'Low'
     };
 
-    const executedPos = await this.executeCurrentTrade(orderPacket);
+    if (!this.autoPilotEnabled || this.getAutoPilotTarget() !== venue) return;
+    let executedPos;
+    let deltaSlots;
+    if (venue !== 'website' && this.currentMarket === 'Crypto') {
+      try {
+        const response = await window.deltaIndiaAdapter.callDaemon('/api/delta/autopilot', {
+          symbol: asset + 'USD', direction, margin: marginUSD, leverage, maxTrades: settings.maxTrades,
+          entry: rawEntry, stop: stopLoss, target
+        });
+        if (response.order?.id) {
+          this.deltaSignalFills?.delete(asset);
+          executedPos = response.order;
+          deltaSlots = response.usedSlots;
+          this.lastDeltaCapacityReason = null;
+          window.dispatchEvent(new Event('delta-position-change'));
+          this.ui.showToast('Delta Auto-Pilot', asset + ' order accepted (' + response.order.id + ')', 'success');
+        } else if (response.skipped) {
+          if (response.capacity && this.lastDeltaCapacityReason !== response.skipped) {
+            this.ui.showToast('Delta Auto-Pilot', response.skipped, 'info');
+            this.lastDeltaCapacityReason = response.skipped;
+          }
+          if (venue === 'delta' && response.capacity) return 'capacity';
+        }
+      } catch (err) {
+        this.ui.showToast('Delta Auto-Pilot', err.message, 'warning');
+      }
+    }
+    if (venue !== 'delta' && this.autoPilotEnabled && this.getAutoPilotTarget() === venue &&
+        this.paperTrader.openPositions.length < settings.maxTrades &&
+        !this.paperTrader.openPositions.some(p => p.asset === asset)) {
+      executedPos = await this.executePaperDeskTrade(orderPacket) || executedPos;
+    }
     if (!executedPos) {
       console.warn(`[Auto-Pilot] Execution skipped or blocked by risk firewall for ${asset}`);
       return;
@@ -1662,7 +1719,7 @@ class App {
       htfTrend: strategyResult.htfTrend?.direction || 'BULLISH',
       riskUSD,
       leverage,
-      openCount: this.paperTrader.openPositions.length,
+      openCount: deltaSlots ?? this.paperTrader.openPositions.length,
       maxTrades: settings.maxTrades,
       currencySymbol: currSym,
       rsiInfo: `1H RSI: ${strategyResult.rsi1H || 55} • 5M RSI: ${strategyResult.rsi5M || 50} (${strategyResult.rsiStatus || 'Momentum Aligned'})`,
@@ -1698,6 +1755,10 @@ class App {
   }
 
   async executeCurrentTrade(customOrder = null) {
+    return this.executePaperDeskTrade(customOrder);
+  }
+
+  async executePaperDeskTrade(customOrder = null) {
     const ctx = this.copilotBrain.currentContext;
     const adapter = this.getActiveAdapter();
     const currency = this.currentMarket === 'India' ? '₹' : '$';
