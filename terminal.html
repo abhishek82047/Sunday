@@ -3343,6 +3343,11 @@
         });
       });
 
+      // Track manual button click so Auto-Pilot calls are 100% distinguished even when strategyResult.reasoning is custom
+      document.getElementById('execute_trade_btn')?.addEventListener('click', () => {
+        window.__sundayManualExecAt = Date.now();
+      }, true);
+
       // 2. Intercept App Trade Execution for Website / Delta / Both (Terminal, Copilot & Auto-Pilot)
       const hookAppExecution = () => {
         const app = window.app || window.__AI_COPILOT_APP__;
@@ -3351,11 +3356,9 @@
         const origExecute = app.executeCurrentTrade.bind(app);
 
         app.executeCurrentTrade = async function (customOrder = null) {
-          const isAutoPilotCall = Boolean(
-            customOrder &&
-            Array.isArray(customOrder.conditions) &&
-            customOrder.conditions.includes('Autonomous Neural Execution')
-          );
+          const isManualBtn = (Date.now() - (window.__sundayManualExecAt || 0)) < 2000;
+          const isAutoPilotOn = Boolean(app.isAutoPilotEnabled || document.getElementById('autopilot_toggle_btn')?.getAttribute('aria-checked') === 'true');
+          const isAutoPilotCall = Boolean(customOrder && !isManualBtn && isAutoPilotOn);
           const target = isAutoPilotCall ? adapter.getAutoPilotTarget() : adapter.getActiveTarget();
 
           if (target === 'website') {
