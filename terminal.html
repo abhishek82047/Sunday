@@ -1238,6 +1238,13 @@
           </button>
         </div>
 
+        <!-- Auto-Pilot Target Selector (Website / Delta / Both) -->
+        <div id="autopilot_target_toggle" title="Choose where Auto-Pilot executes trades: Website, Delta India, or Both" style="display:flex; gap:2px; background:rgba(15,23,42,0.85); padding:3px; border-radius:8px; border:1px solid rgba(255,255,255,0.1);">
+          <button type="button" data-ap-target="website" style="padding:4px 8px; font-size:0.7rem; font-weight:700; border-radius:6px; border:none; cursor:pointer; background:rgba(56,189,248,0.22); color:#38bdf8;">Web</button>
+          <button type="button" data-ap-target="delta" style="padding:4px 8px; font-size:0.7rem; font-weight:700; border-radius:6px; border:none; cursor:pointer; background:transparent; color:#94a3b8;">Delta</button>
+          <button type="button" data-ap-target="both" style="padding:4px 8px; font-size:0.7rem; font-weight:700; border-radius:6px; border:none; cursor:pointer; background:transparent; color:#94a3b8;">Both</button>
+        </div>
+
         <!-- Auto-Pilot Settings Trigger (Execution & Risk Standards) -->
         <button class="autopilot-settings-btn" id="btn_autopilot_settings" type="button" title="Configure Auto-Pilot Risk & Execution Standards" aria-label="Auto-Pilot Settings" onclick="if(window.openAutopilotSettings) window.openAutopilotSettings(event);">
           <i class="ph-bold ph-gear-six"></i>
@@ -1684,12 +1691,15 @@
 
         <!-- PERMANENT PINNED ORDER EXECUTION DOCK (Strategy Engine Footer) -->
         <div class="exec-btn-sticky-tray strategy-pinned-dock" id="exec_btn_sticky_tray">
-          <div id="exec_target_toggle" style="display:flex; gap:6px; margin-bottom:8px; background:rgba(15,23,42,0.75); padding:4px; border-radius:8px; border:1px solid rgba(255,255,255,0.08);">
-            <button type="button" id="exec_target_website_btn" data-exec-target="website" style="flex:1; padding:5px 8px; font-size:0.72rem; font-weight:700; border-radius:6px; border:none; cursor:pointer; background:rgba(56,189,248,0.22); color:#38bdf8;">
-              <i class="ph ph-globe"></i> Website (Paper)
+          <div id="exec_target_toggle" style="display:flex; gap:4px; margin-bottom:8px; background:rgba(15,23,42,0.75); padding:4px; border-radius:8px; border:1px solid rgba(255,255,255,0.08);">
+            <button type="button" id="exec_target_website_btn" data-exec-target="website" style="flex:1; padding:5px 6px; font-size:0.71rem; font-weight:700; border-radius:6px; border:none; cursor:pointer; background:rgba(56,189,248,0.22); color:#38bdf8;">
+              <i class="ph ph-globe"></i> Website
             </button>
-            <button type="button" id="exec_target_delta_btn" data-exec-target="delta" style="flex:1; padding:5px 8px; font-size:0.72rem; font-weight:700; border-radius:6px; border:none; cursor:pointer; background:transparent; color:#94a3b8;">
-              <i class="ph ph-lightning"></i> Delta India (Live)
+            <button type="button" id="exec_target_delta_btn" data-exec-target="delta" style="flex:1; padding:5px 6px; font-size:0.71rem; font-weight:700; border-radius:6px; border:none; cursor:pointer; background:transparent; color:#94a3b8;">
+              <i class="ph ph-lightning"></i> Delta
+            </button>
+            <button type="button" id="exec_target_both_btn" data-exec-target="both" style="flex:1; padding:5px 6px; font-size:0.71rem; font-weight:700; border-radius:6px; border:none; cursor:pointer; background:transparent; color:#94a3b8;">
+              <i class="ph ph-arrows-split"></i> Both
             </button>
           </div>
           <button class="btn-exec-trade long" id="execute_trade_btn">
@@ -1824,13 +1834,20 @@
       <section class="terminal-panel chat-panel panel-copilot" id="panel_copilot" aria-label="Conversational AI Co-Pilot">
         <div class="panel-header">
           <span class="panel-title"><i class="ph ph-sparkle"></i> SUNDAY Companion</span>
-          <div class="voice-controls">
-            <button class="icon-btn" id="voice_test_btn" title="Test SUNDAY Voice (Indian & English Accents)">
-              <i class="ph ph-waveform"></i>
-            </button>
-            <button class="icon-btn muted" id="voice_mute_btn" title="Unmute SUNDAY Voice">
-              <i class="ph ph-speaker-slash"></i>
-            </button>
+          <div style="display:flex; align-items:center; gap:6px;">
+            <div id="copilot_panel_target_toggle" title="Copilot Trade Target: Website, Delta, or Both" style="display:flex; gap:2px; background:rgba(15,23,42,0.85); padding:2px; border-radius:6px; border:1px solid rgba(255,255,255,0.1);">
+              <button type="button" data-exec-target="website" style="padding:3px 6px; font-size:0.66rem; font-weight:700; border-radius:4px; border:none; cursor:pointer; background:rgba(56,189,248,0.22); color:#38bdf8;">Web</button>
+              <button type="button" data-exec-target="delta" style="padding:3px 6px; font-size:0.66rem; font-weight:700; border-radius:4px; border:none; cursor:pointer; background:transparent; color:#94a3b8;">Delta</button>
+              <button type="button" data-exec-target="both" style="padding:3px 6px; font-size:0.66rem; font-weight:700; border-radius:4px; border:none; cursor:pointer; background:transparent; color:#94a3b8;">Both</button>
+            </div>
+              <div class="voice-controls">
+              <button class="icon-btn" id="voice_test_btn" title="Test SUNDAY Voice (Indian & English Accents)">
+                <i class="ph ph-waveform"></i>
+              </button>
+              <button class="icon-btn muted" id="voice_mute_btn" title="Unmute SUNDAY Voice">
+                <i class="ph ph-speaker-slash"></i>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -2408,7 +2425,12 @@
                 <div class="copilot-header-sub">Autonomous Market Intelligence & Strategy Companion</div>
               </div>
             </div>
-            <div style="display: flex; gap: 10px; align-items: center;">
+            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+              <div id="copilot_page_target_toggle" title="Copilot Trade Target: Website, Delta, or Both" style="display:flex; gap:3px; background:rgba(15,23,42,0.85); padding:3px; border-radius:8px; border:1px solid rgba(255,255,255,0.1);">
+                <button type="button" data-exec-target="website" style="padding:5px 10px; font-size:0.74rem; font-weight:700; border-radius:6px; border:none; cursor:pointer; background:rgba(56,189,248,0.22); color:#38bdf8;">Website</button>
+                <button type="button" data-exec-target="delta" style="padding:5px 10px; font-size:0.74rem; font-weight:700; border-radius:6px; border:none; cursor:pointer; background:transparent; color:#94a3b8;">Delta</button>
+                <button type="button" data-exec-target="both" style="padding:5px 10px; font-size:0.74rem; font-weight:700; border-radius:6px; border:none; cursor:pointer; background:transparent; color:#94a3b8;">Both</button>
+              </div>
               <span class="copilot-status-badge">
                 <span class="live-dot"></span> AI Sentinel Active
               </span>
@@ -3270,32 +3292,53 @@
         }
       };
 
-      // 1. Execution Target Toggle (Website Paper vs Delta India Live)
-      const targetWebBtn = document.getElementById('exec_target_website_btn');
-      const targetDeltaBtn = document.getElementById('exec_target_delta_btn');
+      // 1. Execution Target Toggle (Website | Delta | Both) — synced across Terminal & Copilot
       const syncExecTargetUI = (target) => {
-        const isDelta = target === 'delta';
-        if (targetWebBtn) {
-          targetWebBtn.style.background = isDelta ? 'transparent' : 'rgba(56,189,248,0.22)';
-          targetWebBtn.style.color = isDelta ? '#94a3b8' : '#38bdf8';
-        }
-        if (targetDeltaBtn) {
-          targetDeltaBtn.style.background = isDelta ? 'rgba(249,115,22,0.25)' : 'transparent';
-          targetDeltaBtn.style.color = isDelta ? '#fb923c' : '#94a3b8';
-        }
+        document.querySelectorAll('[data-exec-target]').forEach((btn) => {
+          const t = btn.getAttribute('data-exec-target');
+          const active = t === target;
+          if (active) {
+            btn.style.background = t === 'delta' ? 'rgba(249,115,22,0.25)' : (t === 'both' ? 'rgba(16,185,129,0.24)' : 'rgba(56,189,248,0.22)');
+            btn.style.color = t === 'delta' ? '#fb923c' : (t === 'both' ? '#34d399' : '#38bdf8');
+          } else {
+            btn.style.background = 'transparent';
+            btn.style.color = '#94a3b8';
+          }
+        });
+      };
+
+      const syncAutoPilotTargetUI = (target) => {
+        document.querySelectorAll('[data-ap-target]').forEach((btn) => {
+          const t = btn.getAttribute('data-ap-target');
+          const active = t === target;
+          if (active) {
+            btn.style.background = t === 'delta' ? 'rgba(249,115,22,0.25)' : (t === 'both' ? 'rgba(16,185,129,0.24)' : 'rgba(56,189,248,0.22)');
+            btn.style.color = t === 'delta' ? '#fb923c' : (t === 'both' ? '#34d399' : '#38bdf8');
+          } else {
+            btn.style.background = 'transparent';
+            btn.style.color = '#94a3b8';
+          }
+        });
       };
 
       syncExecTargetUI(adapter.getActiveTarget());
-      targetWebBtn?.addEventListener('click', () => {
-        adapter.setActiveTarget('website');
-        syncExecTargetUI('website');
-      });
-      targetDeltaBtn?.addEventListener('click', () => {
-        adapter.setActiveTarget('delta');
-        syncExecTargetUI('delta');
+      syncAutoPilotTargetUI(adapter.getAutoPilotTarget());
+
+      document.querySelectorAll('[data-exec-target]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const val = adapter.setActiveTarget(btn.getAttribute('data-exec-target'));
+          syncExecTargetUI(val);
+        });
       });
 
-      // 2. Intercept App Trade Execution ONLY when Delta India (Live) is selected
+      document.querySelectorAll('[data-ap-target]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const val = adapter.setAutoPilotTarget(btn.getAttribute('data-ap-target'));
+          syncAutoPilotTargetUI(val);
+        });
+      });
+
+      // 2. Intercept App Trade Execution for Website / Delta / Both (Terminal, Copilot & Auto-Pilot)
       const hookAppExecution = () => {
         const app = window.app || window.__AI_COPILOT_APP__;
         if (!app || app.__deltaExecHooked) return Boolean(app);
@@ -3303,8 +3346,20 @@
         const origExecute = app.executeCurrentTrade.bind(app);
 
         app.executeCurrentTrade = async function (customOrder = null) {
-          if (adapter.getActiveTarget() !== 'delta') {
+          const isAutoPilotCall = Boolean(
+            customOrder &&
+            Array.isArray(customOrder.conditions) &&
+            customOrder.conditions.includes('Autonomous Neural Execution')
+          );
+          const target = isAutoPilotCall ? adapter.getAutoPilotTarget() : adapter.getActiveTarget();
+
+          if (target === 'website') {
             return origExecute(customOrder);
+          }
+
+          let websitePos = null;
+          if (target === 'both') {
+            websitePos = await origExecute(customOrder);
           }
 
           try {
@@ -3322,16 +3377,18 @@
             const sl = customOrder?.stopLoss || document.getElementById('order_sl_input')?.value || undefined;
             const tp = customOrder?.target || document.getElementById('order_tp_input')?.value || undefined;
 
-            const ok = window.confirm(
-              `Execute LIVE Delta Exchange India Order?\n\n` +
-              `Symbol: ${productSymbol}\n` +
-              `Side: ${side.toUpperCase()} (${dir})\n` +
-              `Contracts: ${contracts}\n` +
-              `Leverage: ${leverage}x\n` +
-              (sl ? `Stop Loss: ${sl}\n` : '') +
-              (tp ? `Take Profit: ${tp}` : '')
-            );
-            if (!ok) return null;
+            if (!isAutoPilotCall) {
+              const ok = window.confirm(
+                `Execute LIVE Delta Exchange India Order (${target.toUpperCase()})?\n\n` +
+                `Symbol: ${productSymbol}\n` +
+                `Side: ${side.toUpperCase()} (${dir})\n` +
+                `Contracts: ${contracts}\n` +
+                `Leverage: ${leverage}x\n` +
+                (sl ? `Stop Loss: ${sl}\n` : '') +
+                (tp ? `Take Profit: ${tp}` : '')
+              );
+              if (!ok) return websitePos;
+            }
 
             app.ui?.showToast?.('Delta India Order', `Sending ${side.toUpperCase()} ${productSymbol} (${contracts} contracts @ ${leverage}x)...`, 'info');
             const res = await adapter.placeOrder({
@@ -3344,10 +3401,10 @@
               take_profit_price: tp || undefined
             });
             app.ui?.showToast?.('Delta Order Placed!', `${productSymbol} ${side.toUpperCase()} live order ID: ${res.order?.id || 'Confirmed'}`, 'success');
-            return res.order;
+            return websitePos || res.order;
           } catch (err) {
             app.ui?.showToast?.('Delta Order Failed', err.message, 'danger');
-            return null;
+            return websitePos;
           }
         };
         return true;

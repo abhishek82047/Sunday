@@ -101,7 +101,7 @@
     }
   }
   </script>
-  <script type="module" crossorigin src="/assets/terminal-Be5rEwwi.js"></script>
+  <script type="module" crossorigin src="/assets/terminal-CBRv_RaV.js"></script>
   <link rel="modulepreload" crossorigin href="/assets/authManager-CCfLVrnX.js">
   <link rel="modulepreload" crossorigin href="/assets/cursorGlow-DeQYkAkm.js">
   <link rel="modulepreload" crossorigin href="/assets/supabaseConfig-Bzx0vNVH.js">
@@ -837,6 +837,13 @@
           </button>
         </div>
 
+        <!-- Auto-Pilot Target Selector (Website / Delta / Both) -->
+        <div id="autopilot_target_toggle" title="Choose where Auto-Pilot executes trades: Website, Delta India, or Both" style="display:flex; gap:2px; background:rgba(15,23,42,0.85); padding:3px; border-radius:8px; border:1px solid rgba(255,255,255,0.1);">
+          <button type="button" data-ap-target="website" style="padding:4px 8px; font-size:0.7rem; font-weight:700; border-radius:6px; border:none; cursor:pointer; background:rgba(56,189,248,0.22); color:#38bdf8;">Web</button>
+          <button type="button" data-ap-target="delta" style="padding:4px 8px; font-size:0.7rem; font-weight:700; border-radius:6px; border:none; cursor:pointer; background:transparent; color:#94a3b8;">Delta</button>
+          <button type="button" data-ap-target="both" style="padding:4px 8px; font-size:0.7rem; font-weight:700; border-radius:6px; border:none; cursor:pointer; background:transparent; color:#94a3b8;">Both</button>
+        </div>
+
         <!-- Auto-Pilot Settings Trigger (Execution & Risk Standards) -->
         <button class="autopilot-settings-btn" id="btn_autopilot_settings" type="button" title="Configure Auto-Pilot Risk & Execution Standards" aria-label="Auto-Pilot Settings" onclick="if(window.openAutopilotSettings) window.openAutopilotSettings(event);">
           <i class="ph-bold ph-gear-six"></i>
@@ -1283,12 +1290,15 @@
 
         <!-- PERMANENT PINNED ORDER EXECUTION DOCK (Strategy Engine Footer) -->
         <div class="exec-btn-sticky-tray strategy-pinned-dock" id="exec_btn_sticky_tray">
-          <div id="exec_target_toggle" style="display:flex; gap:6px; margin-bottom:8px; background:rgba(15,23,42,0.75); padding:4px; border-radius:8px; border:1px solid rgba(255,255,255,0.08);">
-            <button type="button" id="exec_target_website_btn" data-exec-target="website" style="flex:1; padding:5px 8px; font-size:0.72rem; font-weight:700; border-radius:6px; border:none; cursor:pointer; background:rgba(56,189,248,0.22); color:#38bdf8;">
-              <i class="ph ph-globe"></i> Website (Paper)
+          <div id="exec_target_toggle" style="display:flex; gap:4px; margin-bottom:8px; background:rgba(15,23,42,0.75); padding:4px; border-radius:8px; border:1px solid rgba(255,255,255,0.08);">
+            <button type="button" id="exec_target_website_btn" data-exec-target="website" style="flex:1; padding:5px 6px; font-size:0.71rem; font-weight:700; border-radius:6px; border:none; cursor:pointer; background:rgba(56,189,248,0.22); color:#38bdf8;">
+              <i class="ph ph-globe"></i> Website
             </button>
-            <button type="button" id="exec_target_delta_btn" data-exec-target="delta" style="flex:1; padding:5px 8px; font-size:0.72rem; font-weight:700; border-radius:6px; border:none; cursor:pointer; background:transparent; color:#94a3b8;">
-              <i class="ph ph-lightning"></i> Delta India (Live)
+            <button type="button" id="exec_target_delta_btn" data-exec-target="delta" style="flex:1; padding:5px 6px; font-size:0.71rem; font-weight:700; border-radius:6px; border:none; cursor:pointer; background:transparent; color:#94a3b8;">
+              <i class="ph ph-lightning"></i> Delta
+            </button>
+            <button type="button" id="exec_target_both_btn" data-exec-target="both" style="flex:1; padding:5px 6px; font-size:0.71rem; font-weight:700; border-radius:6px; border:none; cursor:pointer; background:transparent; color:#94a3b8;">
+              <i class="ph ph-arrows-split"></i> Both
             </button>
           </div>
           <button class="btn-exec-trade long" id="execute_trade_btn">
@@ -1423,13 +1433,20 @@
       <section class="terminal-panel chat-panel panel-copilot" id="panel_copilot" aria-label="Conversational AI Co-Pilot">
         <div class="panel-header">
           <span class="panel-title"><i class="ph ph-sparkle"></i> SUNDAY Companion</span>
-          <div class="voice-controls">
-            <button class="icon-btn" id="voice_test_btn" title="Test SUNDAY Voice (Indian & English Accents)">
-              <i class="ph ph-waveform"></i>
-            </button>
-            <button class="icon-btn muted" id="voice_mute_btn" title="Unmute SUNDAY Voice">
-              <i class="ph ph-speaker-slash"></i>
-            </button>
+          <div style="display:flex; align-items:center; gap:6px;">
+            <div id="copilot_panel_target_toggle" title="Copilot Trade Target: Website, Delta, or Both" style="display:flex; gap:2px; background:rgba(15,23,42,0.85); padding:2px; border-radius:6px; border:1px solid rgba(255,255,255,0.1);">
+              <button type="button" data-exec-target="website" style="padding:3px 6px; font-size:0.66rem; font-weight:700; border-radius:4px; border:none; cursor:pointer; background:rgba(56,189,248,0.22); color:#38bdf8;">Web</button>
+              <button type="button" data-exec-target="delta" style="padding:3px 6px; font-size:0.66rem; font-weight:700; border-radius:4px; border:none; cursor:pointer; background:transparent; color:#94a3b8;">Delta</button>
+              <button type="button" data-exec-target="both" style="padding:3px 6px; font-size:0.66rem; font-weight:700; border-radius:4px; border:none; cursor:pointer; background:transparent; color:#94a3b8;">Both</button>
+            </div>
+              <div class="voice-controls">
+              <button class="icon-btn" id="voice_test_btn" title="Test SUNDAY Voice (Indian & English Accents)">
+                <i class="ph ph-waveform"></i>
+              </button>
+              <button class="icon-btn muted" id="voice_mute_btn" title="Unmute SUNDAY Voice">
+                <i class="ph ph-speaker-slash"></i>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -2007,7 +2024,12 @@
                 <div class="copilot-header-sub">Autonomous Market Intelligence & Strategy Companion</div>
               </div>
             </div>
-            <div style="display: flex; gap: 10px; align-items: center;">
+            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+              <div id="copilot_page_target_toggle" title="Copilot Trade Target: Website, Delta, or Both" style="display:flex; gap:3px; background:rgba(15,23,42,0.85); padding:3px; border-radius:8px; border:1px solid rgba(255,255,255,0.1);">
+                <button type="button" data-exec-target="website" style="padding:5px 10px; font-size:0.74rem; font-weight:700; border-radius:6px; border:none; cursor:pointer; background:rgba(56,189,248,0.22); color:#38bdf8;">Website</button>
+                <button type="button" data-exec-target="delta" style="padding:5px 10px; font-size:0.74rem; font-weight:700; border-radius:6px; border:none; cursor:pointer; background:transparent; color:#94a3b8;">Delta</button>
+                <button type="button" data-exec-target="both" style="padding:5px 10px; font-size:0.74rem; font-weight:700; border-radius:6px; border:none; cursor:pointer; background:transparent; color:#94a3b8;">Both</button>
+              </div>
               <span class="copilot-status-badge">
                 <span class="live-dot"></span> AI Sentinel Active
               </span>

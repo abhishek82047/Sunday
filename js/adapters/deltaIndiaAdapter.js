@@ -113,12 +113,24 @@ export class DeltaIndiaAdapter {
   }
 
   getActiveTarget() {
-    return localStorage.getItem('sunday_exec_target_v1') === 'delta' ? 'delta' : 'website';
+    const val = localStorage.getItem('sunday_exec_target_v1');
+    return (val === 'delta' || val === 'both') ? val : 'website';
   }
 
   setActiveTarget(target) {
-    const val = target === 'delta' ? 'delta' : 'website';
+    const val = (target === 'delta' || target === 'both') ? target : 'website';
     localStorage.setItem('sunday_exec_target_v1', val);
+    return val;
+  }
+
+  getAutoPilotTarget() {
+    const val = localStorage.getItem('sunday_autopilot_target_v1');
+    return (val === 'delta' || val === 'both') ? val : 'website';
+  }
+
+  setAutoPilotTarget(target) {
+    const val = (target === 'delta' || target === 'both') ? target : 'website';
+    localStorage.setItem('sunday_autopilot_target_v1', val);
     return val;
   }
 
