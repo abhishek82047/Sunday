@@ -1998,7 +1998,7 @@
             <div class="positions-table-wrapper" id="desk_positions_table_wrapper">
               <!-- Dynamically rendered by terminalUI.renderPositionsPage() -->
             </div>
-            <div class="positions-table-wrapper" id="delta_positions_container" style="display:none; padding: 16px;"></div>
+            <div class="positions-table-wrapper" id="delta_positions_container" style="display:none;"></div>
           </div>
         </div>
       </div>
@@ -3581,50 +3581,56 @@
           }
 
           deltaPosContainer.innerHTML = `
-            <div style="display:flex; justify-content:flex-end; gap:8px; margin-bottom:10px;">
-              <button type="button" id="delta_pos_refresh_btn" class="btn-secondary" style="padding:5px 12px; font-size:0.75rem;">Refresh Delta Positions</button>
-              <button type="button" id="delta_pos_close_all_btn" class="btn-purge-ledger" style="padding:5px 12px; font-size:0.75rem;">Close All Delta</button>
+            <div style="display:flex; flex-wrap:wrap; justify-content:flex-end; gap:8px; padding:8px;">
+              <button type="button" id="delta_pos_refresh_btn" class="btn-secondary">Refresh</button>
+              <button type="button" id="delta_pos_close_all_btn" class="btn-purge-ledger">Close All Delta</button>
             </div>
-            <div style="overflow-x:auto;">
-              <table style="width:100%; border-collapse:collapse; font-size:0.82rem;">
-                <thead>
-                  <tr style="border-bottom:1px solid rgba(255,255,255,0.1); color:#94a3b8; text-align:left;">
-                    <th style="padding:8px;">Symbol</th>
-                    <th style="padding:8px;">Side</th>
-                    <th style="padding:8px;">Size</th>
-                    <th style="padding:8px;">Margin</th>
-                    <th style="padding:8px;">Entry</th>
-                    <th style="padding:8px;">Mark</th>
-                    <th style="padding:8px;">Liq. Price</th>
-                    <th style="padding:8px;">Unrealized PnL</th>
-                    <th style="padding:8px;">Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${list.map(p => {
-                    const sz = Number(p.size || 0);
-                    const isLong = sz > 0;
-                    const pnl = Number(p.unrealized_pnl || 0);
-                    return `
-                      <tr style="border-bottom:1px solid rgba(255,255,255,0.06);">
-                        <td style="padding:10px 8px; font-weight:700; color:#f8fafc;">${p.product_symbol}</td>
-                        <td style="padding:10px 8px; color:${isLong ? '#34d399' : '#f87171'}; font-weight:700;">${isLong ? 'LONG' : 'SHORT'}</td>
-                        <td style="padding:10px 8px;">${Math.abs(sz)}</td>
-                        <td style="padding:10px 8px;">$${Number(p.margin || 0).toFixed(2)}</td>
-                        <td style="padding:10px 8px;">${fmtDeltaPrice(p.entry_price)}</td>
-                        <td data-mark-symbol="${p.product_symbol}" style="padding:10px 8px;">${fmtDeltaPrice(p.mark_price)}</td>
-                        <td style="padding:10px 8px; color:#fbbf24;">${p.liquidation_price ? fmtDeltaPrice(p.liquidation_price) : '-'}</td>
-                        <td style="padding:10px 8px; color:${pnl >= 0 ? '#34d399' : '#f87171'}; font-weight:700;">${pnl >= 0 ? '+' : ''}$${pnl.toFixed(4)}</td>
-                        <td style="padding:10px 8px;">
-                          <button type="button" class="delta-close-pos-btn btn-purge-ledger" data-symbol="${p.product_symbol}" data-size="${Math.abs(sz)}" data-close-side="${isLong ? 'sell' : 'buy'}" style="padding:4px 10px; font-size:0.75rem;">
-                            Close Market
-                          </button>
-                        </td>
-                      </tr>`;
-                  }).join('')}
-                </tbody>
-              </table>
-            </div>`;
+            <table class="positions-detailed-table">
+              <thead><tr>${['Market & Direction', 'Size & Notional', 'Entry Price', 'Mark Price', 'Est. Liq Price',
+                'Safety Buffer', 'Margin Locked', 'Unrealized PnL (ROE%)', 'Targets', 'Action']
+                .map(label => '<th scope="col">' + label + '</th>').join('')}</tr></thead>
+              <tbody>${list.map(p => {
+                const symbol = String(p.product_symbol || '').replace(/[^A-Z0-9._-]/gi, '');
+                const size = Number(p.size);
+                const long = size > 0;
+                const mark = Number(p.mark_price);
+                const liq = Number(p.liquidation_price);
+                const pnl = Number(p.unrealized_pnl);
+                const margin = Number(p.margin);
+                const contractValue = Number(p.product?.contract_value);
+                const leverage = Number(p.leverage);
+                const notional = contractValue > 0 && mark > 0 ? Math.abs(size) * contractValue * mark : margin * leverage;
+                const buffer = liq > 0 && mark > 0 ? Math.abs(mark - liq) / mark * 100 : null;
+                const time = new Date(p.created_at);
+                const opened = p.created_at && Number.isFinite(time.getTime()) ? time.toLocaleString('en-IN', {
+                  timeZone: 'Asia/Kolkata', day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true
+                }) + ' IST' : 'Unavailable';
+                const money = value => value > 0 ? fmtDeltaPrice(value) : '—';
+                return `<tr>
+                  <td><div style="display:flex;align-items:center;gap:8px">
+                    <span class="pos-asset-symbol">${symbol.replace(/USD$/, '/USD')}</span>
+                    <span class="pos-direction-pill ${long ? 'long' : 'short'}">${long ? 'LONG' : 'SHORT'}</span>
+                    ${leverage > 0 ? '<span class="pos-lev-pill">' + leverage + 'x</span>' : ''}
+                  </div><small class="position-entry-time">Opened · ${opened}</small></td>
+                  <td><div class="pos-size-main">${Math.abs(size)} contracts</div>
+                    <div class="pos-notional-sub"><span class="lbl-dim">NOTIONAL:</span> <span class="val-bright">${notional > 0 ? '$' + notional.toFixed(2) : '—'}</span></div></td>
+                  <td><span class="pos-cell-mono">${money(p.entry_price)}</span></td>
+                  <td><span class="pos-cell-mono text-cyan pos-mark-cell"><span class="live-dot-pulse"></span>
+                    <span class="mark-val-num" data-mark-symbol="${symbol}">${money(mark)}</span></span></td>
+                  <td><span class="pos-cell-mono text-warning">${money(liq)}</span></td>
+                  <td><span class="pos-safety-chip ${buffer == null ? '' : buffer < 5 ? 'text-bearish' : buffer < 12 ? 'text-warning' : 'text-bullish'}">${buffer == null ? '—' : buffer.toFixed(1) + '%'}</span></td>
+                  <td><div class="pos-margin-cell"><span class="pos-cell-mono">${Number.isFinite(margin) ? '$' + margin.toFixed(2) : '—'}</span></div></td>
+                  <td><div class="pos-pnl-cell ${pnl >= 0 ? 'pnl-green' : 'pnl-red'}">
+                    <span class="pnl-usd">${Number.isFinite(pnl) ? (pnl >= 0 ? '+' : '') + '$' + pnl.toFixed(4) : '—'}</span>
+                    <span class="pnl-roe">${margin > 0 && Number.isFinite(pnl) ? (pnl >= 0 ? '+' : '') + (100 * pnl / margin).toFixed(1) + '% ROE' : '—'}</span></div></td>
+                  <td><div class="pos-targets-cell"><div><span class="tgt-lbl">SL:</span> <b class="tgt-sl">${money(p.stop_loss_price)}</b></div>
+                    <div><span class="tgt-lbl">TP:</span> <b class="tgt-tp">${money(p.take_profit_price)}</b></div></div></td>
+                  <td><button type="button" class="btn-desk-close-row desk-action-close delta-close-pos-btn" data-symbol="${symbol}"
+                    data-size="${Math.abs(size)}" data-close-side="${long ? 'sell' : 'buy'}" aria-label="Close ${symbol} on Delta India">
+                    <i class="ph-bold ph-x"></i> <span>Close</span></button></td>
+                </tr>`;
+              }).join('')}</tbody>
+            </table>`;
 
           deltaPosContainer.querySelector('#delta_pos_refresh_btn')?.addEventListener('click', loadDeltaPositions);
           deltaPosContainer.querySelector('#delta_pos_close_all_btn')?.addEventListener('click', async () => {

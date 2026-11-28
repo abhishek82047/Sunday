@@ -866,45 +866,36 @@ import{t as e}from"./authManager-CCfLVrnX.js";import"./cursorGlow-DeQYkAkm.js";/
                 <div style="font-weight:700; color:#f1f5f9; margin-bottom:6px;">No Open Positions on Delta India</div>
                 <button type="button" id="delta_pos_refresh_btn" class="btn-secondary" style="padding:6px 14px; font-size:0.78rem;">Refresh</button>
               </div>`,_.querySelector(`#delta_pos_refresh_btn`)?.addEventListener(`click`,E);return}_.innerHTML=`
-            <div style="display:flex; justify-content:flex-end; gap:8px; margin-bottom:10px;">
-              <button type="button" id="delta_pos_refresh_btn" class="btn-secondary" style="padding:5px 12px; font-size:0.75rem;">Refresh Delta Positions</button>
-              <button type="button" id="delta_pos_close_all_btn" class="btn-purge-ledger" style="padding:5px 12px; font-size:0.75rem;">Close All Delta</button>
+            <div style="display:flex; flex-wrap:wrap; justify-content:flex-end; gap:8px; padding:8px;">
+              <button type="button" id="delta_pos_refresh_btn" class="btn-secondary">Refresh</button>
+              <button type="button" id="delta_pos_close_all_btn" class="btn-purge-ledger">Close All Delta</button>
             </div>
-            <div style="overflow-x:auto;">
-              <table style="width:100%; border-collapse:collapse; font-size:0.82rem;">
-                <thead>
-                  <tr style="border-bottom:1px solid rgba(255,255,255,0.1); color:#94a3b8; text-align:left;">
-                    <th style="padding:8px;">Symbol</th>
-                    <th style="padding:8px;">Side</th>
-                    <th style="padding:8px;">Size</th>
-                    <th style="padding:8px;">Margin</th>
-                    <th style="padding:8px;">Entry</th>
-                    <th style="padding:8px;">Mark</th>
-                    <th style="padding:8px;">Liq. Price</th>
-                    <th style="padding:8px;">Unrealized PnL</th>
-                    <th style="padding:8px;">Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${t.map(e=>{let t=Number(e.size||0),n=t>0,r=Number(e.unrealized_pnl||0);return`
-                      <tr style="border-bottom:1px solid rgba(255,255,255,0.06);">
-                        <td style="padding:10px 8px; font-weight:700; color:#f8fafc;">${e.product_symbol}</td>
-                        <td style="padding:10px 8px; color:${n?`#34d399`:`#f87171`}; font-weight:700;">${n?`LONG`:`SHORT`}</td>
-                        <td style="padding:10px 8px;">${Math.abs(t)}</td>
-                        <td style="padding:10px 8px;">$${Number(e.margin||0).toFixed(2)}</td>
-                        <td style="padding:10px 8px;">${b(e.entry_price)}</td>
-                        <td data-mark-symbol="${e.product_symbol}" style="padding:10px 8px;">${b(e.mark_price)}</td>
-                        <td style="padding:10px 8px; color:#fbbf24;">${e.liquidation_price?b(e.liquidation_price):`-`}</td>
-                        <td style="padding:10px 8px; color:${r>=0?`#34d399`:`#f87171`}; font-weight:700;">${r>=0?`+`:``}$${r.toFixed(4)}</td>
-                        <td style="padding:10px 8px;">
-                          <button type="button" class="delta-close-pos-btn btn-purge-ledger" data-symbol="${e.product_symbol}" data-size="${Math.abs(t)}" data-close-side="${n?`sell`:`buy`}" style="padding:4px 10px; font-size:0.75rem;">
-                            Close Market
-                          </button>
-                        </td>
-                      </tr>`}).join(``)}
-                </tbody>
-              </table>
-            </div>`,_.querySelector(`#delta_pos_refresh_btn`)?.addEventListener(`click`,E),_.querySelector(`#delta_pos_close_all_btn`)?.addEventListener(`click`,async()=>{if(window.confirm(`Close ALL ${t.length} open Delta India position(s) at Market?`)){for(let n of t){let t=Number(n.size||0);await e.closePosition({product_symbol:n.product_symbol,size:Math.abs(t),side:t>0?`sell`:`buy`}).catch(()=>{})}await E()}}),_.querySelectorAll(`.delta-close-pos-btn`).forEach(t=>{t.addEventListener(`click`,async()=>{let n=t.dataset.symbol,r=Number(t.dataset.size),i=t.dataset.closeSide;if(window.confirm(`Close ${n} (${r} contracts) on Delta India at Market?`))try{await e.closePosition({product_symbol:n,size:r,side:i}),await E()}catch(e){alert(`Close failed: `+e.message)}})})}catch(e){_.textContent=`Delta sync unavailable: `+e.message}finally{T=!1}}},D=()=>{!document.hidden&&_?.getClientRects().length?E():S&&w([])};setInterval(D,3e3),window.addEventListener(`delta-position-change`,D),document.addEventListener(`visibilitychange`,D),m?.addEventListener(`click`,()=>{v=`website`,w([]),m.style.background=`rgba(56,189,248,0.22)`,m.style.color=`#38bdf8`,h&&(h.style.background=`transparent`,h.style.color=`#94a3b8`),g&&(g.style.display=``),_&&(_.style.display=`none`);let e=window.app||window.__AI_COPILOT_APP__;e?.ui?.renderPositionsPage?.(e.ui._lastPositions||[])}),h?.addEventListener(`click`,()=>{v=`delta`,h.style.background=`rgba(249,115,22,0.25)`,h.style.color=`#fb923c`,m&&(m.style.background=`transparent`,m.style.color=`#94a3b8`),g&&(g.style.display=`none`),_&&(_.style.display=`block`),x(y),E()});let O=()=>{let e=(window.app||window.__AI_COPILOT_APP__)?.ui;if(!e||e.__deltaPosHooked||!e.renderPositionsPage)return!!e;e.__deltaPosHooked=!0;let t=e.renderPositionsPage.bind(e);return e.renderPositionsPage=function(e=[]){t(e),v===`delta`&&x(y)},!0},k=setInterval(()=>{O()&&clearInterval(k)},400),A=document.getElementById(`pb_src_website_btn`),j=document.getElementById(`pb_src_delta_btn`),M=document.getElementById(`delta_passbook_container`),N=document.querySelector(`#view_passbook .passbook-page-container`),P=e=>{N&&Array.from(N.children).forEach(t=>{t.classList.contains(`positions-header-banner`)||t.id===`delta_passbook_container`||(t.style.display=e?``:`none`)})},F=async()=>{if(M){M.innerHTML=`<div style="padding:24px; text-align:center; color:#94a3b8;">Loading Delta Exchange India trade fills...</div>`;try{let t=(await e.getHistory()).fills||[];if(t.length===0){M.innerHTML=`
+            <table class="positions-detailed-table">
+              <thead><tr>${[`Market & Direction`,`Size & Notional`,`Entry Price`,`Mark Price`,`Est. Liq Price`,`Safety Buffer`,`Margin Locked`,`Unrealized PnL (ROE%)`,`Targets`,`Action`].map(e=>`<th scope="col">`+e+`</th>`).join(``)}</tr></thead>
+              <tbody>${t.map(e=>{let t=String(e.product_symbol||``).replace(/[^A-Z0-9._-]/gi,``),n=Number(e.size),r=n>0,i=Number(e.mark_price),a=Number(e.liquidation_price),o=Number(e.unrealized_pnl),s=Number(e.margin),c=Number(e.product?.contract_value),l=Number(e.leverage),u=c>0&&i>0?Math.abs(n)*c*i:s*l,d=a>0&&i>0?Math.abs(i-a)/i*100:null,f=new Date(e.created_at),p=e.created_at&&Number.isFinite(f.getTime())?f.toLocaleString(`en-IN`,{timeZone:`Asia/Kolkata`,day:`2-digit`,month:`short`,year:`numeric`,hour:`2-digit`,minute:`2-digit`,hour12:!0})+` IST`:`Unavailable`,m=e=>e>0?b(e):`—`;return`<tr>
+                  <td><div style="display:flex;align-items:center;gap:8px">
+                    <span class="pos-asset-symbol">${t.replace(/USD$/,`/USD`)}</span>
+                    <span class="pos-direction-pill ${r?`long`:`short`}">${r?`LONG`:`SHORT`}</span>
+                    ${l>0?`<span class="pos-lev-pill">`+l+`x</span>`:``}
+                  </div><small class="position-entry-time">Opened · ${p}</small></td>
+                  <td><div class="pos-size-main">${Math.abs(n)} contracts</div>
+                    <div class="pos-notional-sub"><span class="lbl-dim">NOTIONAL:</span> <span class="val-bright">${u>0?`$`+u.toFixed(2):`—`}</span></div></td>
+                  <td><span class="pos-cell-mono">${m(e.entry_price)}</span></td>
+                  <td><span class="pos-cell-mono text-cyan pos-mark-cell"><span class="live-dot-pulse"></span>
+                    <span class="mark-val-num" data-mark-symbol="${t}">${m(i)}</span></span></td>
+                  <td><span class="pos-cell-mono text-warning">${m(a)}</span></td>
+                  <td><span class="pos-safety-chip ${d==null?``:d<5?`text-bearish`:d<12?`text-warning`:`text-bullish`}">${d==null?`—`:d.toFixed(1)+`%`}</span></td>
+                  <td><div class="pos-margin-cell"><span class="pos-cell-mono">${Number.isFinite(s)?`$`+s.toFixed(2):`—`}</span></div></td>
+                  <td><div class="pos-pnl-cell ${o>=0?`pnl-green`:`pnl-red`}">
+                    <span class="pnl-usd">${Number.isFinite(o)?(o>=0?`+`:``)+`$`+o.toFixed(4):`—`}</span>
+                    <span class="pnl-roe">${s>0&&Number.isFinite(o)?(o>=0?`+`:``)+(100*o/s).toFixed(1)+`% ROE`:`—`}</span></div></td>
+                  <td><div class="pos-targets-cell"><div><span class="tgt-lbl">SL:</span> <b class="tgt-sl">${m(e.stop_loss_price)}</b></div>
+                    <div><span class="tgt-lbl">TP:</span> <b class="tgt-tp">${m(e.take_profit_price)}</b></div></div></td>
+                  <td><button type="button" class="btn-desk-close-row desk-action-close delta-close-pos-btn" data-symbol="${t}"
+                    data-size="${Math.abs(n)}" data-close-side="${r?`sell`:`buy`}" aria-label="Close ${t} on Delta India">
+                    <i class="ph-bold ph-x"></i> <span>Close</span></button></td>
+                </tr>`}).join(``)}</tbody>
+            </table>`,_.querySelector(`#delta_pos_refresh_btn`)?.addEventListener(`click`,E),_.querySelector(`#delta_pos_close_all_btn`)?.addEventListener(`click`,async()=>{if(window.confirm(`Close ALL ${t.length} open Delta India position(s) at Market?`)){for(let n of t){let t=Number(n.size||0);await e.closePosition({product_symbol:n.product_symbol,size:Math.abs(t),side:t>0?`sell`:`buy`}).catch(()=>{})}await E()}}),_.querySelectorAll(`.delta-close-pos-btn`).forEach(t=>{t.addEventListener(`click`,async()=>{let n=t.dataset.symbol,r=Number(t.dataset.size),i=t.dataset.closeSide;if(window.confirm(`Close ${n} (${r} contracts) on Delta India at Market?`))try{await e.closePosition({product_symbol:n,size:r,side:i}),await E()}catch(e){alert(`Close failed: `+e.message)}})})}catch(e){_.textContent=`Delta sync unavailable: `+e.message}finally{T=!1}}},D=()=>{!document.hidden&&_?.getClientRects().length?E():S&&w([])};setInterval(D,3e3),window.addEventListener(`delta-position-change`,D),document.addEventListener(`visibilitychange`,D),m?.addEventListener(`click`,()=>{v=`website`,w([]),m.style.background=`rgba(56,189,248,0.22)`,m.style.color=`#38bdf8`,h&&(h.style.background=`transparent`,h.style.color=`#94a3b8`),g&&(g.style.display=``),_&&(_.style.display=`none`);let e=window.app||window.__AI_COPILOT_APP__;e?.ui?.renderPositionsPage?.(e.ui._lastPositions||[])}),h?.addEventListener(`click`,()=>{v=`delta`,h.style.background=`rgba(249,115,22,0.25)`,h.style.color=`#fb923c`,m&&(m.style.background=`transparent`,m.style.color=`#94a3b8`),g&&(g.style.display=`none`),_&&(_.style.display=`block`),x(y),E()});let O=()=>{let e=(window.app||window.__AI_COPILOT_APP__)?.ui;if(!e||e.__deltaPosHooked||!e.renderPositionsPage)return!!e;e.__deltaPosHooked=!0;let t=e.renderPositionsPage.bind(e);return e.renderPositionsPage=function(e=[]){t(e),v===`delta`&&x(y)},!0},k=setInterval(()=>{O()&&clearInterval(k)},400),A=document.getElementById(`pb_src_website_btn`),j=document.getElementById(`pb_src_delta_btn`),M=document.getElementById(`delta_passbook_container`),N=document.querySelector(`#view_passbook .passbook-page-container`),P=e=>{N&&Array.from(N.children).forEach(t=>{t.classList.contains(`positions-header-banner`)||t.id===`delta_passbook_container`||(t.style.display=e?``:`none`)})},F=async()=>{if(M){M.innerHTML=`<div style="padding:24px; text-align:center; color:#94a3b8;">Loading Delta Exchange India trade fills...</div>`;try{let t=(await e.getHistory()).fills||[];if(t.length===0){M.innerHTML=`
               <div style="padding:32px; text-align:center; color:#94a3b8;">
                 <div style="font-weight:700; color:#f1f5f9; margin-bottom:6px;">No Trade Fills Found on Delta India</div>
                 <button type="button" id="delta_pb_refresh_btn" class="btn-secondary" style="padding:6px 14px; font-size:0.78rem;">Refresh</button>
