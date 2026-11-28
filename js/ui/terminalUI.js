@@ -1539,7 +1539,7 @@ export class TerminalUI {
 
     if (btnSaveAutopilotSettings) {
       btnSaveAutopilotSettings.addEventListener('click', () => {
-        const marginUSD = Math.max(5, Math.min(500, parseFloat(inputMargin?.value || '20')));
+        const marginUSD = Math.max(0.1, Math.min(10000, parseFloat(inputMargin?.value || '20')));
         const leverage = parseInt(selectLeverage?.value || '20', 10);
         const maxTrades = parseInt(selectMaxTrades?.value || '2', 10);
         const minConfluence = parseInt(inputConfluence?.value || '75', 10);

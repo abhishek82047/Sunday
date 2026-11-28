@@ -1354,8 +1354,8 @@ class App {
       if (raw) {
         const s = JSON.parse(raw);
         return {
-          marginUSD: Math.max(5, Math.min(500, parseFloat(s.marginUSD) || 100)),
-          leverage: Math.max(1, Math.min(50, parseInt(s.leverage, 10) || (this.currentMarket === 'India' ? 5 : 20))),
+          marginUSD: Math.max(0.1, Math.min(10000, parseFloat(s.marginUSD) || 100)),
+          leverage: Math.max(1, Math.min(200, parseInt(s.leverage, 10) || (this.currentMarket === 'India' ? 5 : 20))),
           maxTrades: Math.max(1, Math.min(100, parseInt(s.maxTrades, 10) || 5)),
           minConfluence: Math.max(50, Math.min(95, parseInt(s.minConfluence, 10) || 75)),
           minRR: Math.max(1.5, Math.min(5.0, parseFloat(s.minRR) || 2.0)),
