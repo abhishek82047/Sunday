@@ -1,3 +1,4 @@
+import { readTarget, writeTarget, permitsVenue } from './engine/autoPilotTarget.js';
 import { ReversalMonitor } from './paperTrading/reversalMonitor.js';
 import { CryptoAdapter } from './adapters/cryptoAdapter.js';
 import { StrategyEngine } from './engine/strategyEngine.js';
@@ -18,7 +19,7 @@ import { SignalEngine } from './engine/signalEngine.js';
  * Connects Crypto & Indian Market adapters, strategy engines, AI reasoning, voice synthesis, and UI terminal.
  */
 
-class App {
+export class App {
   constructor() {
     this.currentMarket = 'Crypto';
     this.currentAsset = 'BTC';
@@ -210,7 +211,7 @@ class App {
     this.isBooting = true;
   }
 
-  handleAuthSuccess(user) {
+  async handleAuthSuccess(user) {
     this.ui.updateUserProfile(user);
     this.ui.hideAuthOverlay();
     this.paperTrader.setUser(user.id);
@@ -225,6 +226,7 @@ class App {
         : Math.max(0, this.paperTrader.balance - (liveMetrics.usedMargin || 0));
       this.ui.refreshDerivativesOrderDesk();
     }
+    await this.verifyAutoPilotTarget();
     this.syncWithSupabaseCloud();
     this.reconcileOfflineTradesWithSupabase().catch(() => { });
     this.pushSettingsToCloud(this.getAutoPilotSettings()).catch(() => { });
@@ -506,6 +508,7 @@ class App {
       const cloudSignals = [];
 
       for (const ct of cloudTrades) {
+        if (ct.id.startsWith('AP_TARGET_')) continue;
         if (ct.status === 'CONFIG' || ct.id.startsWith('CONFIG_')) {
           if (ct.strategy) {
             try {
@@ -1111,7 +1114,64 @@ class App {
   }
 
   getAutoPilotTarget() {
-    return localStorage.getItem('sunday_autopilot_target_v1') || 'website';
+    const user = this.authManager.getUserId();
+    return localStorage.getItem('ap_target_pending_' + user) ||
+      localStorage.getItem('ap_target_saved_' + user) ||
+      localStorage.getItem('sunday_autopilot_target_v1') || 'website';
+  }
+
+  async selectAutoPilotTarget(target) {
+    const user = this.authManager.getUserId();
+    localStorage.setItem('ap_target_pending_' + user, target);
+    await this.verifyAutoPilotTarget();
+    if (localStorage.getItem('ap_target_pending_' + user)) {
+      throw new Error('Destination sync pending. Automatic entries are paused on this device.');
+    }
+    await this.pushSettingsToCloud();
+  }
+
+  async verifyAutoPilotTarget() {
+    // Serialize route changes with outstanding reads in this session.
+    const routeUser = this.authManager.getUserId();
+    const pendingAtStart = localStorage.getItem('ap_target_pending_' + routeUser);
+    if (this.targetSync && this.syncUser === routeUser && this.syncPending === pendingAtStart) return this.targetSync;
+    const previous = this.targetSync || Promise.resolve();
+    this.syncUser = routeUser;
+    this.syncPending = pendingAtStart;
+    const next = previous.then(async () => {
+      const user = this.authManager.getUserId();
+      const cfg = window.MONDAY_SUPABASE_CONFIG;
+      const token = await this.authManager.getAuthToken();
+      if (!cfg?.url || !user || (user !== 'guest_autopilot' && (!token || token === cfg.anonKey))) return null;
+      const headers = { apikey: cfg.anonKey, Authorization: 'Bearer ' + (token || cfg.anonKey) };
+      const key = 'ap_target_pending_' + user;
+      const pending = localStorage.getItem(key);
+      if (pending) await writeTarget(cfg.url, headers, user, pending);
+      let target = await readTarget(cfg.url, headers, user);
+      if (target === null) {
+        // Migrate existing installations without overwriting another device's selection.
+        let legacy = localStorage.getItem('ap_target_saved_' + user) || localStorage.getItem('sunday_autopilot_target_v1');
+        if (!legacy) {
+          const configId = user === 'guest_autopilot' ? 'CONFIG_AUTOPILOT_GUEST' : 'CONFIG_AUTOPILOT_' + user;
+          const res = await fetch(cfg.url + '/rest/v1/paper_trades?id=eq.' + encodeURIComponent(configId) +
+            '&user_id=eq.' + encodeURIComponent(user) + '&select=strategy', { headers, cache: 'no-store' });
+          if (!res.ok) return null;
+          const rows = await res.json();
+          legacy = rows.length ? JSON.parse(rows[0].strategy).autoPilotTarget : 'website';
+        }
+        await writeTarget(cfg.url, headers, user, legacy || 'website', true);
+        target = await readTarget(cfg.url, headers, user);
+      }
+      if (!target || user !== this.authManager.getUserId() || pending !== localStorage.getItem(key)) return null;
+      if (pending && pending !== target) return null;
+      if (pending) localStorage.removeItem(key);
+      localStorage.setItem('ap_target_saved_' + user, target);
+      window.dispatchEvent(new CustomEvent('autopilot-target-synced', { detail: target }));
+      return target;
+    }).catch(err => { console.warn('[Auto-Pilot destination]', err.message); return null; });
+    this.targetSync = next;
+    try { return await next; }
+    finally { if (this.targetSync === next) this.targetSync = null; }
   }
 
   async scanAndExecuteAutoPilot() {
@@ -1120,7 +1180,8 @@ class App {
 
     try {
       const settings = this.getAutoPilotSettings();
-      const venue = this.getAutoPilotTarget();
+      const venue = await this.verifyAutoPilotTarget();
+      if (!venue || !this.autoPilotEnabled) return;
       const openPositions = venue === 'website' ? this.paperTrader.openPositions : [];
       if (openPositions.length >= settings.maxTrades) return;
 
@@ -1313,7 +1374,7 @@ class App {
       const userConfig = {
         userId: effectiveUserId,
         autopilotSettings: apSettings,
-        autoPilotTarget: this.getAutoPilotTarget(),
+        autoPilotTarget: localStorage.getItem('ap_target_saved_' + effectiveUserId) || localStorage.getItem('sunday_autopilot_target_v1') || undefined,
         autoPilotEnabled: this.autoPilotEnabled,
         watchlist: this.ui?.userWatchlist || JSON.parse(localStorage.getItem('monday_user_watchlist') || '[]'),
         multiLayout: localStorage.getItem('monday_multi_layout') || '1',
@@ -1393,13 +1454,15 @@ class App {
   async handleAutoPilotSignalFill(signal) {
     // Delta entries are owned by the ranked scan, including when a signal fills during evaluation.
     if (!signal || !this.autoPilotEnabled) return;
-    if (this.getAutoPilotTarget() !== 'website') {
+    const venue = await this.verifyAutoPilotTarget();
+    if (!venue || !this.autoPilotEnabled || venue !== this.getAutoPilotTarget()) return;
+    if (venue !== 'website') {
       this.deltaSignalFills ??= new Map();
       const timestamp = Number(signal.filledAt || signal.issuedAt);
       if (timestamp > 0 && Date.now() - timestamp < 300000) {
         this.deltaSignalFills.set(signal.asset, { signal, timestamp });
       }
-      if (this.getAutoPilotTarget() === 'delta') return;
+      if (!permitsVenue(venue, 'website')) return;
     }
     const settings = this.getAutoPilotSettings();
 
@@ -1660,7 +1723,7 @@ class App {
       eventRisk: eventRisk.level || 'Low'
     };
 
-    if (!this.autoPilotEnabled || this.getAutoPilotTarget() !== venue) return;
+    if (await this.verifyAutoPilotTarget() !== venue || !this.autoPilotEnabled || this.getAutoPilotTarget() !== venue) return;
     let executedPos;
     let deltaSlots;
     if (venue !== 'website' && this.currentMarket === 'Crypto') {
@@ -1687,7 +1750,7 @@ class App {
         this.ui.showToast('Delta Auto-Pilot', err.message, 'warning');
       }
     }
-    if (venue !== 'delta' && this.autoPilotEnabled && this.getAutoPilotTarget() === venue &&
+    if (permitsVenue(venue, 'website') && (venue !== 'both' || await this.verifyAutoPilotTarget() === venue) && this.autoPilotEnabled && this.getAutoPilotTarget() === venue &&
         this.paperTrader.openPositions.length < settings.maxTrades &&
         !this.paperTrader.openPositions.some(p => p.asset === asset)) {
       executedPos = await this.executePaperDeskTrade(orderPacket) || executedPos;

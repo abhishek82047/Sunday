@@ -3327,7 +3327,8 @@
       };
 
       syncExecTargetUI(adapter.getActiveTarget());
-      syncAutoPilotTargetUI(adapter.getAutoPilotTarget());
+      syncAutoPilotTargetUI((window.app || window.__AI_COPILOT_APP__)?.getAutoPilotTarget() || adapter.getAutoPilotTarget());
+      window.addEventListener('autopilot-target-synced', e => syncAutoPilotTargetUI(e.detail));
 
       document.querySelectorAll('[data-exec-target]').forEach((btn) => {
         btn.addEventListener('click', () => {
@@ -3338,9 +3339,11 @@
 
       document.querySelectorAll('[data-ap-target]').forEach((btn) => {
         btn.addEventListener('click', () => {
-          const val = adapter.setAutoPilotTarget(btn.getAttribute('data-ap-target'));
+          const app = window.app || window.__AI_COPILOT_APP__;
+          if (!app) return;
+          const val = btn.getAttribute('data-ap-target');
           syncAutoPilotTargetUI(val);
-          (window.app || window.__AI_COPILOT_APP__)?.pushSettingsToCloud();
+          app.selectAutoPilotTarget(val).catch(err => app.ui.showToast('Auto-Pilot destination', err.message, 'warning'));
         });
       });
 

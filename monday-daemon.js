@@ -18,6 +18,7 @@ import path from 'path';
 import http from 'http';
 import https from 'https';
 import crypto from 'crypto';
+import { readTarget, permitsVenue } from './js/engine/autoPilotTarget.js';
 import { DeltaEntries } from './js/adapters/deltaEntries.js';
 
 // File-backed LocalStorage Polyfill for Node.js
@@ -756,9 +757,22 @@ class MondayAutoPilotDaemon {
    * ⚡ Execute genuine desk trade directly from a triggered Alpha Radar limit order fill.
    * Guarantees 1:1 parity between Alpha Signals and Auto-Pilot positions with strict risk control.
    */
+  async paperEntryAllowed() {
+    const user = this.paperTrader.userId;
+    if (!user || !this.autoPilotEnabled) return false;
+    try {
+      // Authenticated accounts have private route rows under Supabase RLS.
+      const key = process.env.SUPABASE_SERVICE_ROLE_KEY || SUPABASE_KEY;
+      const target = await readTarget(SUPABASE_URL, { apikey: key, Authorization: 'Bearer ' + key }, user);
+      return user === this.paperTrader.userId && this.autoPilotEnabled && permitsVenue(target, 'website');
+    } catch {
+      return false;
+    }
+  }
+
   async executeSignalFillTrade(sig, currentPrice) {
     const settings = this.getAutoPilotSettings();
-    if (settings.autoPilotTarget === 'delta') return;
+    if (!await this.paperEntryAllowed()) return;
     if (settings.autoPilotEnabled === false || this.autoPilotEnabled === false) return;
 
     // Enforce maximum concurrent active basket limit
@@ -835,7 +849,7 @@ class MondayAutoPilotDaemon {
 
   async executeAutonomousTrade(asset, strategyResult, currentPrice) {
     const settings = this.getAutoPilotSettings();
-    if (settings.autoPilotTarget === 'delta') return;
+    if (!await this.paperEntryAllowed()) return;
     if (this.paperTrader.openPositions.length >= settings.maxTrades || this.paperTrader.openPositions.some(p => p.asset === asset)) return;
     const dir = strategyResult.direction || 'LONG';
     const levels = strategyResult.levels;
@@ -1129,8 +1143,17 @@ class MondayAutoPilotDaemon {
             const apiSecret = settings.delta_api_secret;
 
             if (req.url === '/api/delta/autopilot') {
+              const checkDestination = async () => {
+                const route = await readTarget(SUPABASE_URL,
+                  { apikey: SUPABASE_KEY, Authorization: req.headers.authorization }, user.id);
+                if (!permitsVenue(route, 'delta')) throw new Error('Saved Auto-Pilot destination excludes Delta');
+              };
+              await checkDestination();
               const result = await this.deltaEntries.submit(user.id, body,
-                (method, path, payload) => this.deltaIndiaRequest(method, path, apiKey, apiSecret, payload));
+                async (method, path, payload) => {
+                  if (method === 'POST') await checkDestination();
+                  return this.deltaIndiaRequest(method, path, apiKey, apiSecret, payload);
+                });
               res.writeHead(200, { 'Content-Type': 'application/json' });
               res.end(JSON.stringify({ success: true, ...result }));
               return;
