@@ -8732,12 +8732,10 @@ html, body {
   }
 }
 
-@media (max-width: 767px) {
-  #view_positions .position-entry-time {
-    display: block;
-    margin-top: 6px;
-    color: #94a3b8;
-    font-size: .72rem;
-    line-height: 1.45;
-  }
+#view_positions .position-entry-time {
+  display: block;
+  margin-top: 6px;
+  color: #94a3b8;
+  font-size: .72rem;
+  line-height: 1.45;
 }

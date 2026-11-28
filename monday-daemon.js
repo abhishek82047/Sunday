@@ -16,6 +16,8 @@ import { ReversalMonitor } from './js/paperTrading/reversalMonitor.js';
 import fs from 'fs';
 import path from 'path';
 import http from 'http';
+import https from 'https';
+import crypto from 'crypto';
 
 // File-backed LocalStorage Polyfill for Node.js
 const storageFile = path.resolve('scratch/daemon_storage.json');
@@ -991,10 +993,183 @@ class MondayAutoPilotDaemon {
     }, this.heartbeatIntervalMs);
   }
 
+  readJsonBody(req) {
+    return new Promise((resolve, reject) => {
+      let data = '';
+      req.on('data', chunk => {
+        data += chunk;
+        if (data.length > 1e6) {
+          req.destroy();
+          reject(new Error('Payload too large'));
+        }
+      });
+      req.on('end', () => {
+        try {
+          resolve(data ? JSON.parse(data) : {});
+        } catch (e) {
+          reject(new Error('Invalid JSON body'));
+        }
+      });
+      req.on('error', reject);
+    });
+  }
+
+  deltaIndiaRequest(method, apiPath, apiKey, apiSecret, bodyObj = null) {
+    return new Promise((resolve, reject) => {
+      const timestamp = Math.floor(Date.now() / 1000).toString();
+      const payload = bodyObj ? JSON.stringify(bodyObj) : '';
+      const prehash = method + timestamp + apiPath + payload;
+      const signature = crypto
+        .createHmac('sha256', apiSecret)
+        .update(prehash)
+        .digest('hex');
+
+      const options = {
+        hostname: 'api.india.delta.exchange',
+        port: 443,
+        path: apiPath,
+        method,
+        headers: {
+          'api-key': apiKey,
+          'timestamp': timestamp,
+          'signature': signature,
+          'Content-Type': 'application/json',
+          'User-Agent': 'project-sunday-daemon/1.0'
+        }
+      };
+
+      const req = https.request(options, (res) => {
+        let raw = '';
+        res.on('data', chunk => { raw += chunk; });
+        res.on('end', () => {
+          try {
+            const parsed = JSON.parse(raw || '{}');
+            if (res.statusCode >= 200 && res.statusCode < 300 && parsed.success !== false) {
+              resolve(parsed);
+            } else {
+              const msg = parsed?.error?.code || parsed?.error?.message || parsed?.message || `Delta HTTP ${res.statusCode}`;
+              reject(new Error(msg));
+            }
+          } catch (e) {
+            reject(new Error(`Delta parse error (HTTP ${res.statusCode})`));
+          }
+        });
+      });
+
+      req.on('error', reject);
+      if (payload) req.write(payload);
+      req.end();
+    });
+  }
+
+  async getSupabaseUserSettings(authHeader) {
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      throw new Error('Missing Supabase Authorization token');
+    }
+
+    const userRes = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': authHeader
+      }
+    });
+    if (!userRes.ok) {
+      throw new Error('Invalid or expired user session');
+    }
+    const user = await userRes.json();
+    if (!user?.id) throw new Error('User not found');
+
+    const settingsRes = await fetch(
+      `${SUPABASE_URL}/rest/v1/user_settings?user_id=eq.${encodeURIComponent(user.id)}&select=*`,
+      {
+        headers: {
+          'apikey': SUPABASE_KEY,
+          'Authorization': authHeader
+        }
+      }
+    );
+    if (!settingsRes.ok) {
+      throw new Error('Failed to load user_settings from Supabase');
+    }
+    const rows = await settingsRes.json();
+    const settings = Array.isArray(rows) && rows.length > 0 ? rows[0] : null;
+    if (!settings || !settings.delta_api_key || !settings.delta_api_secret) {
+      throw new Error('Delta API Key & Secret not saved in your System Settings');
+    }
+    return { user, settings };
+  }
+
   startHttpServer() {
     const port = process.env.PORT || 10000;
     try {
-      const server = http.createServer((req, res) => {
+      const server = http.createServer(async (req, res) => {
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+        if (req.method === 'OPTIONS') {
+          res.writeHead(204);
+          res.end();
+          return;
+        }
+
+        if (req.url && req.url.startsWith('/api/delta/') && req.method === 'POST') {
+          try {
+            const body = await this.readJsonBody(req);
+            const { user, settings } = await this.getSupabaseUserSettings(req.headers['authorization']);
+            const apiKey = settings.delta_api_key;
+            const apiSecret = settings.delta_api_secret;
+
+            if (req.url === '/api/delta/test') {
+              const data = await this.deltaIndiaRequest('GET', '/v2/wallet/balances', apiKey, apiSecret);
+              res.writeHead(200, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ success: true, userEmail: user.email, balances: data.result || [] }));
+              return;
+            }
+
+            if (req.url === '/api/delta/positions') {
+              const data = await this.deltaIndiaRequest('GET', '/v2/positions/margined', apiKey, apiSecret);
+              res.writeHead(200, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ success: true, positions: data.result || [] }));
+              return;
+            }
+
+            if (req.url === '/api/delta/order') {
+              if (settings.execution_mode !== 'delta_india') {
+                throw new Error('Execution Mode is set to Paper. Switch to Delta Exchange India (Live) in System Settings first.');
+              }
+              const orderPayload = {
+                product_symbol: String(body.product_symbol || 'BTCUSD').toUpperCase(),
+                size: Math.max(1, Math.round(Number(body.size || settings.default_order_size || 1))),
+                side: body.side === 'sell' ? 'sell' : 'buy',
+                order_type: body.order_type === 'limit_order' ? 'limit_order' : 'market_order'
+              };
+              if (orderPayload.order_type === 'limit_order' && body.limit_price) {
+                orderPayload.limit_price = String(body.limit_price);
+              }
+              if (body.stop_loss_price) {
+                orderPayload.bracket_stop_loss_price = String(body.stop_loss_price);
+              }
+              if (body.take_profit_price) {
+                orderPayload.bracket_take_profit_price = String(body.take_profit_price);
+              }
+
+              const data = await this.deltaIndiaRequest('POST', '/v2/orders', apiKey, apiSecret, orderPayload);
+              res.writeHead(200, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ success: true, order: data.result || data }));
+              return;
+            }
+
+            res.writeHead(404, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ success: false, error: 'Unknown Delta endpoint' }));
+            return;
+          } catch (err) {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ success: false, error: err.message }));
+            return;
+          }
+        }
+
         const uptimeSec = Math.round((Date.now() - this.startTime) / 1000);
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({

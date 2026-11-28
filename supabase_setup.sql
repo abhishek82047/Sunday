@@ -69,3 +69,25 @@ ALTER TABLE public.paper_trades ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users can manage own trades" 
   ON public.paper_trades FOR ALL 
   USING (auth.uid()::text = user_id OR user_id LIKE 'guest_%');
+
+-- 3. Per-User Settings & Delta Exchange India API Credentials (Strictly Isolated per User)
+CREATE TABLE IF NOT EXISTS public.user_settings (
+  user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  delta_api_key TEXT DEFAULT '',
+  delta_api_secret TEXT DEFAULT '',
+  execution_mode TEXT DEFAULT 'paper',
+  risk_per_trade NUMERIC DEFAULT 2.0,
+  default_leverage INTEGER DEFAULT 5,
+  default_order_size INTEGER DEFAULT 1,
+  autopilot_enabled BOOLEAN DEFAULT false,
+  news_shield_enabled BOOLEAN DEFAULT true,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.user_settings ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can manage own settings" ON public.user_settings;
+CREATE POLICY "Users can manage own settings"
+  ON public.user_settings FOR ALL
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);

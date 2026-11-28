@@ -101,13 +101,13 @@
     }
   }
   </script>
-  <script type="module" crossorigin src="/assets/terminal-CIR4iMMn.js"></script>
+  <script type="module" crossorigin src="/assets/terminal-CixCrCHZ.js"></script>
   <link rel="modulepreload" crossorigin href="/assets/authManager-CCfLVrnX.js">
   <link rel="modulepreload" crossorigin href="/assets/cursorGlow-DeQYkAkm.js">
   <link rel="modulepreload" crossorigin href="/assets/supabaseConfig-Bzx0vNVH.js">
   <link rel="modulepreload" crossorigin href="/assets/sfx-BD73uRAY.js">
   <link rel="stylesheet" crossorigin href="/assets/cursorGlow-C3VEOl5q.css">
-  <link rel="stylesheet" crossorigin href="/assets/terminal-B2pkjyKP.css">
+  <link rel="stylesheet" crossorigin href="/assets/terminal-BLqR85dQ.css">
   <link rel="stylesheet" crossorigin href="/assets/components-BwzQZAbq.css">
 </head>
 <body data-mobile-page="chart">
@@ -2170,6 +2170,81 @@
               </select>
             </div>
           </div>
+
+          <!-- Section 4: Delta Exchange India (Per-User Isolated API & Settings) -->
+          <div class="settings-card" id="delta_india_settings_card">
+            <div class="settings-card-header" style="display:flex; justify-content:space-between; align-items:center; gap:12px;">
+              <span class="settings-card-title"><i class="ph ph-plugs-connected"></i> Delta Exchange India (Per-User API)</span>
+              <span id="delta_user_badge" style="font-size:0.75rem; padding:3px 10px; border-radius:999px; background:rgba(99,102,241,0.15); color:#a5b4fc;">Checking login...</span>
+            </div>
+            <div class="settings-field-row">
+              <div class="settings-field-label-group">
+                <span class="settings-field-name">Execution Mode</span>
+                <span class="settings-field-desc">Separate per account. Keep Paper Mode for virtual practice, or switch to Delta India for live orders.</span>
+              </div>
+              <select id="delta_execution_mode" class="cal-select" style="width: 210px;">
+                <option value="paper" selected>Paper Trading (Virtual)</option>
+                <option value="delta_india">Delta Exchange India (Live)</option>
+              </select>
+            </div>
+            <div class="settings-field-row">
+              <div class="settings-field-label-group">
+                <span class="settings-field-name">Delta India API Key</span>
+                <span class="settings-field-desc">Saved privately to your own Supabase account (RLS protected). Use Read + Trade only, Withdraw OFF.</span>
+              </div>
+              <input id="delta_api_key_input" type="text" placeholder="Enter your Delta API Key" autocomplete="off" class="cal-select" style="width: 260px;" />
+            </div>
+            <div class="settings-field-row">
+              <div class="settings-field-label-group">
+                <span class="settings-field-name">Delta India API Secret</span>
+                <span class="settings-field-desc">Never shared with other users. Used only by Render backend when you execute.</span>
+              </div>
+              <input id="delta_api_secret_input" type="password" placeholder="Enter your Delta API Secret" autocomplete="new-password" class="cal-select" style="width: 260px;" />
+            </div>
+            <div class="settings-field-row">
+              <div class="settings-field-label-group">
+                <span class="settings-field-name">Default Order Size &amp; Leverage</span>
+                <span class="settings-field-desc">Saved per user for quick Delta India execution.</span>
+              </div>
+              <div style="display:flex; gap:8px; align-items:center;">
+                <input id="delta_order_size_input" type="number" min="1" value="1" title="Contracts Size" class="cal-select" style="width: 90px;" />
+                <input id="delta_leverage_input" type="number" min="1" max="100" value="5" title="Leverage (x)" class="cal-select" style="width: 90px;" />
+              </div>
+            </div>
+            <div class="settings-field-row" style="flex-wrap:wrap; gap:10px;">
+              <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                <button class="btn-secondary" id="delta_save_settings_btn" type="button" style="padding: 7px 14px; font-size: 0.82rem;">
+                  <i class="ph ph-floppy-disk"></i> Save My Settings
+                </button>
+                <button class="btn-secondary" id="delta_test_conn_btn" type="button" style="padding: 7px 14px; font-size: 0.82rem;">
+                  <i class="ph ph-lightning"></i> Test Connection &amp; Balance
+                </button>
+              </div>
+              <span id="delta_status_text" style="font-size:0.8rem; color:#94a3b8;">Ready</span>
+            </div>
+
+            <div class="settings-field-row" style="border-top: 1px solid rgba(255,255,255,0.08); padding-top: 14px; margin-top: 6px; flex-wrap:wrap; gap:10px;">
+              <div class="settings-field-label-group">
+                <span class="settings-field-name">Quick Delta India Order</span>
+                <span class="settings-field-desc">Places a direct Market order on your connected Delta Exchange India account.</span>
+              </div>
+              <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+                <select id="delta_quick_symbol" class="cal-select" style="width: 120px;">
+                  <option value="BTCUSD">BTCUSD</option>
+                  <option value="ETHUSD">ETHUSD</option>
+                  <option value="SOLUSD">SOLUSD</option>
+                  <option value="XRPUSD">XRPUSD</option>
+                  <option value="DOGEUSD">DOGEUSD</option>
+                </select>
+                <button id="delta_quick_buy_btn" type="button" class="btn-secondary" style="padding:7px 14px; font-size:0.8rem; background:rgba(16,185,129,0.18); border-color:rgba(16,185,129,0.45); color:#34d399;">
+                  Buy / Long
+                </button>
+                <button id="delta_quick_sell_btn" type="button" class="btn-secondary" style="padding:7px 14px; font-size:0.8rem; background:rgba(239,68,68,0.18); border-color:rgba(239,68,68,0.45); color:#f87171;">
+                  Sell / Short
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -2449,7 +2524,7 @@
               <div class="field-label-row">
                 <label for="select_autopilot_maxtrades" class="settings-label">
                   Max Concurrent Trades
-                  <span class="help-tooltip-trigger" tabindex="0" title="Auto-Pilot throttles and refuses new entries if this limit is reached until an open trade hits TP or SL." data-tooltip="Auto-Pilot throttles and refuses new entries if this limit is reached until an open trade hits TP or SL.">
+                  <span class="help-tooltip-trigger" tabindex="0" title="Auto-Pilot throttles and refuses new entries if this limit is reached until a position closes. Auto-Pilot also checks open positions for confirmed 5-minute reversals." data-tooltip="Auto-Pilot throttles and refuses new entries if this limit is reached until a position closes. Auto-Pilot also checks open positions for confirmed 5-minute reversals.">
                     <i class="ph ph-question"></i>
                   </span>
                 </label>
@@ -2458,6 +2533,7 @@
                 <option value="2" selected>2 Trades (Conservative)</option>
                 <option value="5">5 Trades (Moderate)</option>
                 <option value="10">10 Trades (Active Basket)</option>
+                <option value="20">20 Trades</option>
                 <option value="30">30 Trades (Multi-Asset Diversified)</option>
                 <option value="50">50 Trades (Portfolio Scale)</option>
                 <option value="70">70 Trades (High-Capacity Swarm)</option>
@@ -2682,5 +2758,6 @@
   <!-- Specular Cursor Glow & Procedural Audio Feedback -->
 
   <!-- PWA Offline Service Worker Registration with Seamless Cache Refresh -->
+  <!-- Per-User Delta Exchange India Settings & Quick Execution -->
 </body>
 </html>

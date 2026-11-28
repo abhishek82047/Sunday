@@ -5336,7 +5336,7 @@ const openedAt = new Date(pos.openedAt);
               <span class="pos-direction-pill ${(pos.direction || 'LONG').toLowerCase()}">${pos.direction || 'LONG'}</span>
               <span class="pos-lev-pill">${pos.leverage || 20}x</span>
             </div>
-            <small class="position-entry-time" hidden>Opened · ${entryTime}</small>
+            <small class="position-entry-time">Opened · ${entryTime}</small>
           </td>
           <td>
             <div class="pos-size-main">${pos.positionSize || 1} ${pos.asset}</div>
