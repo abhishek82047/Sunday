@@ -1171,6 +1171,18 @@ class MondayAutoPilotDaemon {
         }
 
         const uptimeSec = Math.round((Date.now() - this.startTime) / 1000);
+        if (req.url === '/api/ip') {
+          try {
+            const ipRes = await fetch('https://api.ipify.org?format=json');
+            const ipJson = await ipRes.json();
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ outboundIp: ipJson.ip }));
+          } catch (e) {
+            res.writeHead(500, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: e.message }));
+          }
+          return;
+        }
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({
           status: 'ONLINE',
