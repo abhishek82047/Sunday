@@ -100,11 +100,34 @@ export class DeltaIndiaAdapter {
     return this.callDaemon('/api/delta/positions', {});
   }
 
-  async placeOrder({ product_symbol, side, size, order_type = 'market_order', limit_price, stop_loss_price, take_profit_price }) {
+  async getHistory() {
+    return this.callDaemon('/api/delta/history', {});
+  }
+
+  async closePosition({ product_symbol, size, side }) {
+    return this.callDaemon('/api/delta/close', {
+      product_symbol,
+      size: Math.abs(Math.round(Number(size))),
+      side
+    });
+  }
+
+  getActiveTarget() {
+    return localStorage.getItem('sunday_exec_target_v1') === 'delta' ? 'delta' : 'website';
+  }
+
+  setActiveTarget(target) {
+    const val = target === 'delta' ? 'delta' : 'website';
+    localStorage.setItem('sunday_exec_target_v1', val);
+    return val;
+  }
+
+  async placeOrder({ product_symbol, side, size, leverage, order_type = 'market_order', limit_price, stop_loss_price, take_profit_price }) {
     return this.callDaemon('/api/delta/order', {
       product_symbol,
       side,
-      size: Number(size),
+      size: Math.max(1, Math.round(Number(size || 1))),
+      leverage: leverage ? Number(leverage) : undefined,
       order_type,
       limit_price,
       stop_loss_price,

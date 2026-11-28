@@ -1134,12 +1134,51 @@ class MondayAutoPilotDaemon {
               return;
             }
 
-            if (req.url === '/api/delta/order') {
-              if (settings.execution_mode !== 'delta_india') {
-                throw new Error('Execution Mode is set to Paper. Switch to Delta Exchange India (Live) in System Settings first.');
+            if (req.url === '/api/delta/history') {
+              const data = await this.deltaIndiaRequest('GET', '/v2/fills?page_size=50', apiKey, apiSecret);
+              res.writeHead(200, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ success: true, fills: data.result || [] }));
+              return;
+            }
+
+            if (req.url === '/api/delta/close') {
+              const symbol = String(body.product_symbol || '').toUpperCase();
+              const rawSize = Math.abs(Math.round(Number(body.size || 0)));
+              if (!symbol || rawSize < 1) {
+                throw new Error('Invalid product_symbol or size to close');
               }
+              const closeSide = body.side === 'buy' ? 'buy' : 'sell';
+              const closePayload = {
+                product_symbol: symbol,
+                size: rawSize,
+                side: closeSide,
+                order_type: 'market_order',
+                reduce_only: true
+              };
+              const data = await this.deltaIndiaRequest('POST', '/v2/orders', apiKey, apiSecret, closePayload);
+              res.writeHead(200, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ success: true, order: data.result || data }));
+              return;
+            }
+
+            if (req.url === '/api/delta/order') {
+              const symbol = String(body.product_symbol || 'BTCUSD').toUpperCase();
+              if (body.leverage && Number(body.leverage) >= 1) {
+                try {
+                  const prodInfo = await this.deltaIndiaRequest('GET', `/v2/products/${symbol}`, apiKey, apiSecret);
+                  const prodId = prodInfo?.result?.id;
+                  if (prodId) {
+                    await this.deltaIndiaRequest('POST', `/v2/products/${prodId}/orders/leverage`, apiKey, apiSecret, {
+                      leverage: String(Math.round(Number(body.leverage)))
+                    });
+                  }
+                } catch (levErr) {
+                  this.log(`Delta leverage set note (${symbol}): ${levErr.message}`, 'WARN');
+                }
+              }
+
               const orderPayload = {
-                product_symbol: String(body.product_symbol || 'BTCUSD').toUpperCase(),
+                product_symbol: symbol,
                 size: Math.max(1, Math.round(Number(body.size || settings.default_order_size || 1))),
                 side: body.side === 'sell' ? 'sell' : 'buy',
                 order_type: body.order_type === 'limit_order' ? 'limit_order' : 'market_order'

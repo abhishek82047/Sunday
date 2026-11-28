@@ -1684,6 +1684,14 @@
 
         <!-- PERMANENT PINNED ORDER EXECUTION DOCK (Strategy Engine Footer) -->
         <div class="exec-btn-sticky-tray strategy-pinned-dock" id="exec_btn_sticky_tray">
+          <div id="exec_target_toggle" style="display:flex; gap:6px; margin-bottom:8px; background:rgba(15,23,42,0.75); padding:4px; border-radius:8px; border:1px solid rgba(255,255,255,0.08);">
+            <button type="button" id="exec_target_website_btn" data-exec-target="website" style="flex:1; padding:5px 8px; font-size:0.72rem; font-weight:700; border-radius:6px; border:none; cursor:pointer; background:rgba(56,189,248,0.22); color:#38bdf8;">
+              <i class="ph ph-globe"></i> Website (Paper)
+            </button>
+            <button type="button" id="exec_target_delta_btn" data-exec-target="delta" style="flex:1; padding:5px 8px; font-size:0.72rem; font-weight:700; border-radius:6px; border:none; cursor:pointer; background:transparent; color:#94a3b8;">
+              <i class="ph ph-lightning"></i> Delta India (Live)
+            </button>
+          </div>
           <button class="btn-exec-trade long" id="execute_trade_btn">
             <div class="exec-btn-content">
               <i class="ph-bold ph-lightning" id="exec_btn_icon"></i>
@@ -1926,7 +1934,11 @@
                 <div class="positions-banner-sub">Real-time Margin, Liquidation Proximity & Position Management</div>
               </div>
             </div>
-            <div style="display: flex; gap: 10px; align-items: center;">
+            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+              <div id="positions_source_toggle" style="display:flex; gap:4px; background:rgba(15,23,42,0.75); padding:4px; border-radius:8px; border:1px solid rgba(255,255,255,0.1);">
+                <button type="button" id="pos_src_website_btn" style="padding:5px 12px; font-size:0.75rem; font-weight:700; border-radius:6px; border:none; cursor:pointer; background:rgba(56,189,248,0.22); color:#38bdf8;">Website</button>
+                <button type="button" id="pos_src_delta_btn" style="padding:5px 12px; font-size:0.75rem; font-weight:700; border-radius:6px; border:none; cursor:pointer; background:transparent; color:#94a3b8;">Delta India</button>
+              </div>
               <button class="btn-primary" id="positions_page_new_trade_btn" type="button">
                 <i class="ph ph-plus-circle"></i> Go to Terminal
               </button>
@@ -1969,6 +1981,7 @@
             <div class="positions-table-wrapper" id="desk_positions_table_wrapper">
               <!-- Dynamically rendered by terminalUI.renderPositionsPage() -->
             </div>
+            <div class="positions-table-wrapper" id="delta_positions_container" style="display:none; padding: 16px;"></div>
           </div>
         </div>
       </div>
@@ -2092,7 +2105,11 @@
                 </div>
               </div>
             </div>
-            <div style="display: flex; gap: 10px; align-items: center;">
+            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+              <div id="passbook_source_toggle" style="display:flex; gap:4px; background:rgba(15,23,42,0.75); padding:4px; border-radius:8px; border:1px solid rgba(255,255,255,0.1);">
+                <button type="button" id="pb_src_website_btn" style="padding:5px 12px; font-size:0.75rem; font-weight:700; border-radius:6px; border:none; cursor:pointer; background:rgba(16,185,129,0.22); color:#34d399;">Website</button>
+                <button type="button" id="pb_src_delta_btn" style="padding:5px 12px; font-size:0.75rem; font-weight:700; border-radius:6px; border:none; cursor:pointer; background:transparent; color:#94a3b8;">Delta India</button>
+              </div>
               <button class="btn-sync-cloud-ledger" id="btn_sync_cloud_passbook" type="button" title="Sync with Supabase Cloud" style="background: rgba(14, 165, 233, 0.12); border: 1px solid rgba(14, 165, 233, 0.35); color: #38bdf8; padding: 6px 14px; border-radius: 6px; font-size: 0.75rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all 0.2s;">
                 <i class="ph-bold ph-cloud-arrow-up"></i> <span class="sync-cloud-btn-text">Sync to Cloud</span>
               </button>
@@ -2101,6 +2118,8 @@
               </button>
             </div>
           </div>
+
+          <div id="delta_passbook_container" class="settings-card" style="display:none; margin-bottom:16px;"></div>
 
           <!-- 365-Day GitHub-Style PnL Yearbook Card -->
           <div class="yearbook-heatmap-card" id="yearbook_heatmap_card">
@@ -2602,16 +2621,6 @@
               </div>
               <input id="delta_api_secret_input" type="password" placeholder="Enter your Delta API Secret" autocomplete="new-password" class="cal-select" style="width: 260px;" />
             </div>
-            <div class="settings-field-row">
-              <div class="settings-field-label-group">
-                <span class="settings-field-name">Default Order Size &amp; Leverage</span>
-                <span class="settings-field-desc">Saved per user for quick Delta India execution.</span>
-              </div>
-              <div style="display:flex; gap:8px; align-items:center;">
-                <input id="delta_order_size_input" type="number" min="1" value="1" title="Contracts Size" class="cal-select" style="width: 90px;" />
-                <input id="delta_leverage_input" type="number" min="1" max="100" value="5" title="Leverage (x)" class="cal-select" style="width: 90px;" />
-              </div>
-            </div>
             <div class="settings-field-row" style="flex-wrap:wrap; gap:10px;">
               <div style="display:flex; gap:10px; flex-wrap:wrap;">
                 <button class="btn-secondary" id="delta_save_settings_btn" type="button" style="padding: 7px 14px; font-size: 0.82rem;">
@@ -2622,28 +2631,6 @@
                 </button>
               </div>
               <span id="delta_status_text" style="font-size:0.8rem; color:#94a3b8;">Ready</span>
-            </div>
-
-            <div class="settings-field-row" style="border-top: 1px solid rgba(255,255,255,0.08); padding-top: 14px; margin-top: 6px; flex-wrap:wrap; gap:10px;">
-              <div class="settings-field-label-group">
-                <span class="settings-field-name">Quick Delta India Order</span>
-                <span class="settings-field-desc">Places a direct Market order on your connected Delta Exchange India account.</span>
-              </div>
-              <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
-                <select id="delta_quick_symbol" class="cal-select" style="width: 120px;">
-                  <option value="BTCUSD">BTCUSD</option>
-                  <option value="ETHUSD">ETHUSD</option>
-                  <option value="SOLUSD">SOLUSD</option>
-                  <option value="XRPUSD">XRPUSD</option>
-                  <option value="DOGEUSD">DOGEUSD</option>
-                </select>
-                <button id="delta_quick_buy_btn" type="button" class="btn-secondary" style="padding:7px 14px; font-size:0.8rem; background:rgba(16,185,129,0.18); border-color:rgba(16,185,129,0.45); color:#34d399;">
-                  Buy / Long
-                </button>
-                <button id="delta_quick_sell_btn" type="button" class="btn-secondary" style="padding:7px 14px; font-size:0.8rem; background:rgba(239,68,68,0.18); border-color:rgba(239,68,68,0.45); color:#f87171;">
-                  Sell / Short
-                </button>
-              </div>
             </div>
           </div>
         </div>
@@ -3260,11 +3247,11 @@
       });
     }
   </script>
-  <!-- Per-User Delta Exchange India Settings & Quick Execution -->
+  <!-- Per-User Delta Exchange India Settings, Toggles & Live Execution -->
   <script type="module">
     import './js/adapters/deltaIndiaAdapter.js';
 
-    function initDeltaIndiaSettingsUI() {
+    function initDeltaIndiaIntegration() {
       const adapter = window.deltaIndiaAdapter;
       if (!adapter) return;
 
@@ -3272,16 +3259,9 @@
       const modeEl = document.getElementById('delta_execution_mode');
       const keyEl = document.getElementById('delta_api_key_input');
       const secretEl = document.getElementById('delta_api_secret_input');
-      const sizeEl = document.getElementById('delta_order_size_input');
-      const levEl = document.getElementById('delta_leverage_input');
       const statusEl = document.getElementById('delta_status_text');
       const saveBtn = document.getElementById('delta_save_settings_btn');
       const testBtn = document.getElementById('delta_test_conn_btn');
-      const symEl = document.getElementById('delta_quick_symbol');
-      const buyBtn = document.getElementById('delta_quick_buy_btn');
-      const sellBtn = document.getElementById('delta_quick_sell_btn');
-
-      if (!saveBtn || !testBtn) return;
 
       const setStatus = (msg, color = '#94a3b8') => {
         if (statusEl) {
@@ -3290,6 +3270,94 @@
         }
       };
 
+      // 1. Execution Target Toggle (Website Paper vs Delta India Live)
+      const targetWebBtn = document.getElementById('exec_target_website_btn');
+      const targetDeltaBtn = document.getElementById('exec_target_delta_btn');
+      const syncExecTargetUI = (target) => {
+        const isDelta = target === 'delta';
+        if (targetWebBtn) {
+          targetWebBtn.style.background = isDelta ? 'transparent' : 'rgba(56,189,248,0.22)';
+          targetWebBtn.style.color = isDelta ? '#94a3b8' : '#38bdf8';
+        }
+        if (targetDeltaBtn) {
+          targetDeltaBtn.style.background = isDelta ? 'rgba(249,115,22,0.25)' : 'transparent';
+          targetDeltaBtn.style.color = isDelta ? '#fb923c' : '#94a3b8';
+        }
+      };
+
+      syncExecTargetUI(adapter.getActiveTarget());
+      targetWebBtn?.addEventListener('click', () => {
+        adapter.setActiveTarget('website');
+        syncExecTargetUI('website');
+      });
+      targetDeltaBtn?.addEventListener('click', () => {
+        adapter.setActiveTarget('delta');
+        syncExecTargetUI('delta');
+      });
+
+      // 2. Intercept App Trade Execution ONLY when Delta India (Live) is selected
+      const hookAppExecution = () => {
+        const app = window.app || window.__AI_COPILOT_APP__;
+        if (!app || app.__deltaExecHooked) return Boolean(app);
+        app.__deltaExecHooked = true;
+        const origExecute = app.executeCurrentTrade.bind(app);
+
+        app.executeCurrentTrade = async function (customOrder = null) {
+          if (adapter.getActiveTarget() !== 'delta') {
+            return origExecute(customOrder);
+          }
+
+          try {
+            const rawAsset = (customOrder?.asset || app.currentAsset || 'BTC').toUpperCase().replace(/[^A-Z0-9]/g, '');
+            const productSymbol = rawAsset.endsWith('USD') ? rawAsset : `${rawAsset}USD`;
+            const dir = (customOrder?.direction || app.ui?.orderState?.direction || 'LONG').toUpperCase();
+            const side = dir === 'SHORT' || dir === 'SELL' ? 'sell' : 'buy';
+            const levInput = document.getElementById('order_leverage_input');
+            const leverage = Number(customOrder?.leverage || levInput?.value || 5);
+            const qtyInput = document.getElementById('order_size_qty');
+            const coinQty = Number(customOrder?.positionSize || qtyInput?.value || 0.001);
+            const mult = productSymbol === 'BTCUSD' ? 1000 : (productSymbol === 'ETHUSD' ? 100 : 1);
+            const contracts = Math.max(1, Math.round(coinQty * mult));
+
+            const sl = customOrder?.stopLoss || document.getElementById('order_sl_input')?.value || undefined;
+            const tp = customOrder?.target || document.getElementById('order_tp_input')?.value || undefined;
+
+            const ok = window.confirm(
+              `Execute LIVE Delta Exchange India Order?\n\n` +
+              `Symbol: ${productSymbol}\n` +
+              `Side: ${side.toUpperCase()} (${dir})\n` +
+              `Contracts: ${contracts}\n` +
+              `Leverage: ${leverage}x\n` +
+              (sl ? `Stop Loss: ${sl}\n` : '') +
+              (tp ? `Take Profit: ${tp}` : '')
+            );
+            if (!ok) return null;
+
+            app.ui?.showToast?.('Delta India Order', `Sending ${side.toUpperCase()} ${productSymbol} (${contracts} contracts @ ${leverage}x)...`, 'info');
+            const res = await adapter.placeOrder({
+              product_symbol: productSymbol,
+              side,
+              size: contracts,
+              leverage,
+              order_type: 'market_order',
+              stop_loss_price: sl || undefined,
+              take_profit_price: tp || undefined
+            });
+            app.ui?.showToast?.('Delta Order Placed!', `${productSymbol} ${side.toUpperCase()} live order ID: ${res.order?.id || 'Confirmed'}`, 'success');
+            return res.order;
+          } catch (err) {
+            app.ui?.showToast?.('Delta Order Failed', err.message, 'danger');
+            return null;
+          }
+        };
+        return true;
+      };
+
+      const hookTimer = setInterval(() => {
+        if (hookAppExecution()) clearInterval(hookTimer);
+      }, 400);
+
+      // 3. Per-User Settings Load & Save
       const loadUserSettings = async () => {
         try {
           const { user, settings } = await adapter.loadSettings();
@@ -3298,10 +3366,12 @@
             if (modeEl) modeEl.value = settings.execution_mode || 'paper';
             if (keyEl) keyEl.value = settings.delta_api_key || '';
             if (secretEl) secretEl.value = settings.delta_api_secret || '';
-            if (sizeEl) sizeEl.value = settings.default_order_size || 1;
-            if (levEl) levEl.value = settings.default_leverage || 5;
             const riskEl = document.getElementById('settings_risk_per_trade');
             if (riskEl && settings.risk_per_trade) riskEl.value = String(settings.risk_per_trade);
+            if (settings.execution_mode === 'delta_india') {
+              adapter.setActiveTarget('delta');
+              syncExecTargetUI('delta');
+            }
             setStatus('Per-user settings loaded', '#34d399');
           } else {
             setStatus('No Delta API saved yet for this account', '#fbbf24');
@@ -3312,30 +3382,33 @@
         }
       };
 
-      saveBtn.addEventListener('click', async () => {
+      saveBtn?.addEventListener('click', async () => {
         try {
           setStatus('Saving to your account...', '#a5b4fc');
           const riskEl = document.getElementById('settings_risk_per_trade');
           const apEl = document.getElementById('settings_autopilot_toggle');
           const nsEl = document.getElementById('settings_news_shield_toggle');
+          const levEl = document.getElementById('order_leverage_input');
 
-          await adapter.saveSettings({
+          const saved = await adapter.saveSettings({
             execution_mode: modeEl?.value,
             delta_api_key: keyEl?.value,
             delta_api_secret: secretEl?.value,
-            default_order_size: sizeEl?.value,
-            default_leverage: levEl?.value,
+            default_leverage: levEl?.value || 5,
             risk_per_trade: riskEl?.value,
             autopilot_enabled: apEl?.checked,
             news_shield_enabled: nsEl?.checked
           });
+          const nextTarget = saved.execution_mode === 'delta_india' ? 'delta' : 'website';
+          adapter.setActiveTarget(nextTarget);
+          syncExecTargetUI(nextTarget);
           setStatus('Saved privately to your account!', '#34d399');
         } catch (err) {
           setStatus(err.message, '#f87171');
         }
       });
 
-      testBtn.addEventListener('click', async () => {
+      testBtn?.addEventListener('click', async () => {
         try {
           setStatus('Testing Delta India connection...', '#a5b4fc');
           const res = await adapter.testConnection();
@@ -3350,36 +3423,244 @@
         }
       });
 
-      const handleQuickOrder = async (side) => {
-        const symbol = symEl?.value || 'BTCUSD';
-        const size = Number(sizeEl?.value || 1);
-        if (!confirm(`Place LIVE ${side.toUpperCase()} market order on Delta India?\nSymbol: ${symbol}\nSize: ${size} contract(s)`)) {
-          return;
-        }
+      // 4. Positions View Toggle (Website vs Delta India)
+      const posWebBtn = document.getElementById('pos_src_website_btn');
+      const posDeltaBtn = document.getElementById('pos_src_delta_btn');
+      const deskPosWrapper = document.getElementById('desk_positions_table_wrapper');
+      const deltaPosContainer = document.getElementById('delta_positions_container');
+
+      const loadDeltaPositions = async () => {
+        if (!deltaPosContainer) return;
+        deltaPosContainer.innerHTML = '<div style="padding:24px; text-align:center; color:#94a3b8;">Loading live Delta Exchange India positions...</div>';
         try {
-          setStatus(`Placing ${side.toUpperCase()} ${symbol}...`, '#a5b4fc');
-          const res = await adapter.placeOrder({
-            product_symbol: symbol,
-            side,
-            size,
-            order_type: 'market_order'
+          const res = await adapter.getPositions();
+          const list = (res.positions || []).filter(p => Number(p.size) !== 0);
+          if (list.length === 0) {
+            deltaPosContainer.innerHTML = `
+              <div style="padding:32px; text-align:center; color:#94a3b8;">
+                <div style="font-weight:700; color:#f1f5f9; margin-bottom:6px;">No Open Positions on Delta India</div>
+                <button type="button" id="delta_pos_refresh_btn" class="btn-secondary" style="padding:6px 14px; font-size:0.78rem;">Refresh</button>
+              </div>`;
+            deltaPosContainer.querySelector('#delta_pos_refresh_btn')?.addEventListener('click', loadDeltaPositions);
+            return;
+          }
+
+          deltaPosContainer.innerHTML = `
+            <div style="display:flex; justify-content:flex-end; margin-bottom:10px;">
+              <button type="button" id="delta_pos_refresh_btn" class="btn-secondary" style="padding:5px 12px; font-size:0.75rem;">Refresh Delta Positions</button>
+            </div>
+            <div style="overflow-x:auto;">
+              <table style="width:100%; border-collapse:collapse; font-size:0.82rem;">
+                <thead>
+                  <tr style="border-bottom:1px solid rgba(255,255,255,0.1); color:#94a3b8; text-align:left;">
+                    <th style="padding:8px;">Symbol</th>
+                    <th style="padding:8px;">Side</th>
+                    <th style="padding:8px;">Size</th>
+                    <th style="padding:8px;">Entry</th>
+                    <th style="padding:8px;">Mark</th>
+                    <th style="padding:8px;">Unrealized PnL</th>
+                    <th style="padding:8px;">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${list.map(p => {
+                    const sz = Number(p.size || 0);
+                    const isLong = sz > 0;
+                    const pnl = Number(p.unrealized_pnl || 0);
+                    return `
+                      <tr style="border-bottom:1px solid rgba(255,255,255,0.06);">
+                        <td style="padding:10px 8px; font-weight:700; color:#f8fafc;">${p.product_symbol}</td>
+                        <td style="padding:10px 8px; color:${isLong ? '#34d399' : '#f87171'}; font-weight:700;">${isLong ? 'LONG' : 'SHORT'}</td>
+                        <td style="padding:10px 8px;">${Math.abs(sz)}</td>
+                        <td style="padding:10px 8px;">$${Number(p.entry_price || 0).toFixed(2)}</td>
+                        <td style="padding:10px 8px;">$${Number(p.mark_price || 0).toFixed(2)}</td>
+                        <td style="padding:10px 8px; color:${pnl >= 0 ? '#34d399' : '#f87171'}; font-weight:700;">${pnl >= 0 ? '+' : ''}$${pnl.toFixed(4)}</td>
+                        <td style="padding:10px 8px;">
+                          <button type="button" class="delta-close-pos-btn btn-purge-ledger" data-symbol="${p.product_symbol}" data-size="${Math.abs(sz)}" data-close-side="${isLong ? 'sell' : 'buy'}" style="padding:4px 10px; font-size:0.75rem;">
+                            Close Market
+                          </button>
+                        </td>
+                      </tr>`;
+                  }).join('')}
+                </tbody>
+              </table>
+            </div>`;
+
+          deltaPosContainer.querySelector('#delta_pos_refresh_btn')?.addEventListener('click', loadDeltaPositions);
+          deltaPosContainer.querySelectorAll('.delta-close-pos-btn').forEach(btn => {
+            btn.addEventListener('click', async () => {
+              const sym = btn.dataset.symbol;
+              const size = Number(btn.dataset.size);
+              const closeSide = btn.dataset.closeSide;
+              if (!window.confirm(`Close ${sym} (${size} contracts) on Delta India at Market?`)) return;
+              try {
+                await adapter.closePosition({ product_symbol: sym, size, side: closeSide });
+                await loadDeltaPositions();
+              } catch (err) {
+                alert('Close failed: ' + err.message);
+              }
+            });
           });
-          setStatus(`Order placed! ID: ${res.order?.id || 'OK'}`, '#34d399');
         } catch (err) {
-          setStatus(err.message, '#f87171');
+          deltaPosContainer.innerHTML = `<div style="padding:24px; text-align:center; color:#f87171;">${err.message}</div>`;
         }
       };
 
-      if (buyBtn) buyBtn.addEventListener('click', () => handleQuickOrder('buy'));
-      if (sellBtn) sellBtn.addEventListener('click', () => handleQuickOrder('sell'));
+      posWebBtn?.addEventListener('click', () => {
+        posWebBtn.style.background = 'rgba(56,189,248,0.22)';
+        posWebBtn.style.color = '#38bdf8';
+        if (posDeltaBtn) {
+          posDeltaBtn.style.background = 'transparent';
+          posDeltaBtn.style.color = '#94a3b8';
+        }
+        if (deskPosWrapper) deskPosWrapper.style.display = '';
+        if (deltaPosContainer) deltaPosContainer.style.display = 'none';
+      });
+
+      posDeltaBtn?.addEventListener('click', () => {
+        posDeltaBtn.style.background = 'rgba(249,115,22,0.25)';
+        posDeltaBtn.style.color = '#fb923c';
+        if (posWebBtn) {
+          posWebBtn.style.background = 'transparent';
+          posWebBtn.style.color = '#94a3b8';
+        }
+        if (deskPosWrapper) deskPosWrapper.style.display = 'none';
+        if (deltaPosContainer) deltaPosContainer.style.display = 'block';
+        loadDeltaPositions();
+      });
+
+      // 5. Passbook View Toggle (Website vs Delta India)
+      const pbWebBtn = document.getElementById('pb_src_website_btn');
+      const pbDeltaBtn = document.getElementById('pb_src_delta_btn');
+      const deltaPbContainer = document.getElementById('delta_passbook_container');
+      const pbPageContainer = document.querySelector('#view_passbook .passbook-page-container');
+
+      const setWebsitePassbookVisible = (visible) => {
+        if (!pbPageContainer) return;
+        Array.from(pbPageContainer.children).forEach((el) => {
+          if (el.classList.contains('positions-header-banner') || el.id === 'delta_passbook_container') return;
+          el.style.display = visible ? '' : 'none';
+        });
+      };
+
+      const loadDeltaHistory = async () => {
+        if (!deltaPbContainer) return;
+        deltaPbContainer.innerHTML = '<div style="padding:24px; text-align:center; color:#94a3b8;">Loading Delta Exchange India trade fills...</div>';
+        try {
+          const res = await adapter.getHistory();
+          const fills = res.fills || [];
+          if (fills.length === 0) {
+            deltaPbContainer.innerHTML = `
+              <div style="padding:32px; text-align:center; color:#94a3b8;">
+                <div style="font-weight:700; color:#f1f5f9; margin-bottom:6px;">No Trade Fills Found on Delta India</div>
+                <button type="button" id="delta_pb_refresh_btn" class="btn-secondary" style="padding:6px 14px; font-size:0.78rem;">Refresh</button>
+              </div>`;
+            deltaPbContainer.querySelector('#delta_pb_refresh_btn')?.addEventListener('click', loadDeltaHistory);
+            return;
+          }
+
+          deltaPbContainer.innerHTML = `
+            <div class="settings-card-header" style="display:flex; justify-content:space-between; align-items:center;">
+              <span class="settings-card-title"><i class="ph ph-receipt"></i> Delta Exchange India Trade History (${fills.length})</span>
+              <button type="button" id="delta_pb_refresh_btn" class="btn-secondary" style="padding:5px 12px; font-size:0.75rem;">Refresh</button>
+            </div>
+            <div style="overflow-x:auto;">
+              <table style="width:100%; border-collapse:collapse; font-size:0.82rem;">
+                <thead>
+                  <tr style="border-bottom:1px solid rgba(255,255,255,0.1); color:#94a3b8; text-align:left;">
+                    <th style="padding:8px;">Time</th>
+                    <th style="padding:8px;">Symbol</th>
+                    <th style="padding:8px;">Side</th>
+                    <th style="padding:8px;">Size</th>
+                    <th style="padding:8px;">Price</th>
+                    <th style="padding:8px;">Commission</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${fills.map(f => {
+                    const isBuy = f.side === 'buy';
+                    const t = f.created_at ? new Date(f.created_at).toLocaleString() : '-';
+                    return `
+                      <tr style="border-bottom:1px solid rgba(255,255,255,0.06);">
+                        <td style="padding:8px; color:#94a3b8;">${t}</td>
+                        <td style="padding:8px; font-weight:700; color:#f8fafc;">${f.product_symbol || '-'}</td>
+                        <td style="padding:8px; color:${isBuy ? '#34d399' : '#f87171'}; font-weight:700;">${(f.side || '').toUpperCase()}</td>
+                        <td style="padding:8px;">${f.size || 0}</td>
+                        <td style="padding:8px;">$${Number(f.price || 0).toFixed(2)}</td>
+                        <td style="padding:8px; color:#fbbf24;">${Number(f.commission || 0).toFixed(5)}</td>
+                      </tr>`;
+                  }).join('')}
+                </tbody>
+              </table>
+            </div>`;
+          deltaPbContainer.querySelector('#delta_pb_refresh_btn')?.addEventListener('click', loadDeltaHistory);
+        } catch (err) {
+          deltaPbContainer.innerHTML = `<div style="padding:24px; text-align:center; color:#f87171;">${err.message}</div>`;
+        }
+      };
+
+      pbWebBtn?.addEventListener('click', () => {
+        pbWebBtn.style.background = 'rgba(16,185,129,0.22)';
+        pbWebBtn.style.color = '#34d399';
+        if (pbDeltaBtn) {
+          pbDeltaBtn.style.background = 'transparent';
+          pbDeltaBtn.style.color = '#94a3b8';
+        }
+        setWebsitePassbookVisible(true);
+        if (deltaPbContainer) deltaPbContainer.style.display = 'none';
+      });
+
+      pbDeltaBtn?.addEventListener('click', () => {
+        pbDeltaBtn.style.background = 'rgba(249,115,22,0.25)';
+        pbDeltaBtn.style.color = '#fb923c';
+        if (pbWebBtn) {
+          pbWebBtn.style.background = 'transparent';
+          pbWebBtn.style.color = '#94a3b8';
+        }
+        setWebsitePassbookVisible(false);
+        if (deltaPbContainer) deltaPbContainer.style.display = 'block';
+        loadDeltaHistory();
+      });
+
+      // 6. Signals View: Inject "Load to Delta" next to "Load into Desk"
+      const enhanceSignalCards = () => {
+        const grid = document.getElementById('signals_cards_grid');
+        if (!grid) return;
+        grid.querySelectorAll('.signal-actions-row').forEach((row) => {
+          if (row.querySelector('.signal-btn-load-delta')) return;
+          const loadBtn = row.querySelector('.signal-btn-load');
+          if (!loadBtn) return;
+
+          loadBtn.innerHTML = '<i class="ph-bold ph-globe"></i> Load to Website';
+          const deltaBtn = document.createElement('button');
+          deltaBtn.type = 'button';
+          deltaBtn.className = 'signal-action-btn signal-btn-load-delta';
+          deltaBtn.style.cssText = 'background:rgba(249,115,22,0.16); border-color:rgba(249,115,22,0.45); color:#fb923c;';
+          deltaBtn.innerHTML = '<i class="ph-bold ph-lightning"></i> Load to Delta';
+          deltaBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            adapter.setActiveTarget('delta');
+            syncExecTargetUI('delta');
+            loadBtn.click();
+          });
+          row.appendChild(deltaBtn);
+        });
+      };
+
+      const signalsGrid = document.getElementById('signals_cards_grid');
+      if (signalsGrid) {
+        const obs = new MutationObserver(enhanceSignalCards);
+        obs.observe(signalsGrid, { childList: true, subtree: true });
+        enhanceSignalCards();
+      }
 
       setTimeout(loadUserSettings, 1200);
     }
 
     if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', initDeltaIndiaSettingsUI);
+      document.addEventListener('DOMContentLoaded', initDeltaIndiaIntegration);
     } else {
-      initDeltaIndiaSettingsUI();
+      initDeltaIndiaIntegration();
     }
   </script>
 </body>

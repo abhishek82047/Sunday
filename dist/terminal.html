@@ -101,7 +101,7 @@
     }
   }
   </script>
-  <script type="module" crossorigin src="/assets/terminal-CixCrCHZ.js"></script>
+  <script type="module" crossorigin src="/assets/terminal-Be5rEwwi.js"></script>
   <link rel="modulepreload" crossorigin href="/assets/authManager-CCfLVrnX.js">
   <link rel="modulepreload" crossorigin href="/assets/cursorGlow-DeQYkAkm.js">
   <link rel="modulepreload" crossorigin href="/assets/supabaseConfig-Bzx0vNVH.js">
@@ -1283,6 +1283,14 @@
 
         <!-- PERMANENT PINNED ORDER EXECUTION DOCK (Strategy Engine Footer) -->
         <div class="exec-btn-sticky-tray strategy-pinned-dock" id="exec_btn_sticky_tray">
+          <div id="exec_target_toggle" style="display:flex; gap:6px; margin-bottom:8px; background:rgba(15,23,42,0.75); padding:4px; border-radius:8px; border:1px solid rgba(255,255,255,0.08);">
+            <button type="button" id="exec_target_website_btn" data-exec-target="website" style="flex:1; padding:5px 8px; font-size:0.72rem; font-weight:700; border-radius:6px; border:none; cursor:pointer; background:rgba(56,189,248,0.22); color:#38bdf8;">
+              <i class="ph ph-globe"></i> Website (Paper)
+            </button>
+            <button type="button" id="exec_target_delta_btn" data-exec-target="delta" style="flex:1; padding:5px 8px; font-size:0.72rem; font-weight:700; border-radius:6px; border:none; cursor:pointer; background:transparent; color:#94a3b8;">
+              <i class="ph ph-lightning"></i> Delta India (Live)
+            </button>
+          </div>
           <button class="btn-exec-trade long" id="execute_trade_btn">
             <div class="exec-btn-content">
               <i class="ph-bold ph-lightning" id="exec_btn_icon"></i>
@@ -1525,7 +1533,11 @@
                 <div class="positions-banner-sub">Real-time Margin, Liquidation Proximity & Position Management</div>
               </div>
             </div>
-            <div style="display: flex; gap: 10px; align-items: center;">
+            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+              <div id="positions_source_toggle" style="display:flex; gap:4px; background:rgba(15,23,42,0.75); padding:4px; border-radius:8px; border:1px solid rgba(255,255,255,0.1);">
+                <button type="button" id="pos_src_website_btn" style="padding:5px 12px; font-size:0.75rem; font-weight:700; border-radius:6px; border:none; cursor:pointer; background:rgba(56,189,248,0.22); color:#38bdf8;">Website</button>
+                <button type="button" id="pos_src_delta_btn" style="padding:5px 12px; font-size:0.75rem; font-weight:700; border-radius:6px; border:none; cursor:pointer; background:transparent; color:#94a3b8;">Delta India</button>
+              </div>
               <button class="btn-primary" id="positions_page_new_trade_btn" type="button">
                 <i class="ph ph-plus-circle"></i> Go to Terminal
               </button>
@@ -1568,6 +1580,7 @@
             <div class="positions-table-wrapper" id="desk_positions_table_wrapper">
               <!-- Dynamically rendered by terminalUI.renderPositionsPage() -->
             </div>
+            <div class="positions-table-wrapper" id="delta_positions_container" style="display:none; padding: 16px;"></div>
           </div>
         </div>
       </div>
@@ -1691,7 +1704,11 @@
                 </div>
               </div>
             </div>
-            <div style="display: flex; gap: 10px; align-items: center;">
+            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+              <div id="passbook_source_toggle" style="display:flex; gap:4px; background:rgba(15,23,42,0.75); padding:4px; border-radius:8px; border:1px solid rgba(255,255,255,0.1);">
+                <button type="button" id="pb_src_website_btn" style="padding:5px 12px; font-size:0.75rem; font-weight:700; border-radius:6px; border:none; cursor:pointer; background:rgba(16,185,129,0.22); color:#34d399;">Website</button>
+                <button type="button" id="pb_src_delta_btn" style="padding:5px 12px; font-size:0.75rem; font-weight:700; border-radius:6px; border:none; cursor:pointer; background:transparent; color:#94a3b8;">Delta India</button>
+              </div>
               <button class="btn-sync-cloud-ledger" id="btn_sync_cloud_passbook" type="button" title="Sync with Supabase Cloud" style="background: rgba(14, 165, 233, 0.12); border: 1px solid rgba(14, 165, 233, 0.35); color: #38bdf8; padding: 6px 14px; border-radius: 6px; font-size: 0.75rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all 0.2s;">
                 <i class="ph-bold ph-cloud-arrow-up"></i> <span class="sync-cloud-btn-text">Sync to Cloud</span>
               </button>
@@ -1700,6 +1717,8 @@
               </button>
             </div>
           </div>
+
+          <div id="delta_passbook_container" class="settings-card" style="display:none; margin-bottom:16px;"></div>
 
           <!-- 365-Day GitHub-Style PnL Yearbook Card -->
           <div class="yearbook-heatmap-card" id="yearbook_heatmap_card">
@@ -2201,16 +2220,6 @@
               </div>
               <input id="delta_api_secret_input" type="password" placeholder="Enter your Delta API Secret" autocomplete="new-password" class="cal-select" style="width: 260px;" />
             </div>
-            <div class="settings-field-row">
-              <div class="settings-field-label-group">
-                <span class="settings-field-name">Default Order Size &amp; Leverage</span>
-                <span class="settings-field-desc">Saved per user for quick Delta India execution.</span>
-              </div>
-              <div style="display:flex; gap:8px; align-items:center;">
-                <input id="delta_order_size_input" type="number" min="1" value="1" title="Contracts Size" class="cal-select" style="width: 90px;" />
-                <input id="delta_leverage_input" type="number" min="1" max="100" value="5" title="Leverage (x)" class="cal-select" style="width: 90px;" />
-              </div>
-            </div>
             <div class="settings-field-row" style="flex-wrap:wrap; gap:10px;">
               <div style="display:flex; gap:10px; flex-wrap:wrap;">
                 <button class="btn-secondary" id="delta_save_settings_btn" type="button" style="padding: 7px 14px; font-size: 0.82rem;">
@@ -2221,28 +2230,6 @@
                 </button>
               </div>
               <span id="delta_status_text" style="font-size:0.8rem; color:#94a3b8;">Ready</span>
-            </div>
-
-            <div class="settings-field-row" style="border-top: 1px solid rgba(255,255,255,0.08); padding-top: 14px; margin-top: 6px; flex-wrap:wrap; gap:10px;">
-              <div class="settings-field-label-group">
-                <span class="settings-field-name">Quick Delta India Order</span>
-                <span class="settings-field-desc">Places a direct Market order on your connected Delta Exchange India account.</span>
-              </div>
-              <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
-                <select id="delta_quick_symbol" class="cal-select" style="width: 120px;">
-                  <option value="BTCUSD">BTCUSD</option>
-                  <option value="ETHUSD">ETHUSD</option>
-                  <option value="SOLUSD">SOLUSD</option>
-                  <option value="XRPUSD">XRPUSD</option>
-                  <option value="DOGEUSD">DOGEUSD</option>
-                </select>
-                <button id="delta_quick_buy_btn" type="button" class="btn-secondary" style="padding:7px 14px; font-size:0.8rem; background:rgba(16,185,129,0.18); border-color:rgba(16,185,129,0.45); color:#34d399;">
-                  Buy / Long
-                </button>
-                <button id="delta_quick_sell_btn" type="button" class="btn-secondary" style="padding:7px 14px; font-size:0.8rem; background:rgba(239,68,68,0.18); border-color:rgba(239,68,68,0.45); color:#f87171;">
-                  Sell / Short
-                </button>
-              </div>
             </div>
           </div>
         </div>
@@ -2758,6 +2745,6 @@
   <!-- Specular Cursor Glow & Procedural Audio Feedback -->
 
   <!-- PWA Offline Service Worker Registration with Seamless Cache Refresh -->
-  <!-- Per-User Delta Exchange India Settings & Quick Execution -->
+  <!-- Per-User Delta Exchange India Settings, Toggles & Live Execution -->
 </body>
 </html>
