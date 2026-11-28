@@ -3491,12 +3491,54 @@
       const deskPosWrapper = document.getElementById('desk_positions_table_wrapper');
       const deltaPosContainer = document.getElementById('delta_positions_container');
 
+      const fmtDeltaPrice = (val) => {
+        const n = Number(val || 0);
+        if (!n) return '$0.00';
+        if (n < 1) return '$' + n.toFixed(4);
+        if (n < 10) return '$' + n.toFixed(3);
+        return '$' + n.toFixed(2);
+      };
+
+      const updateDeskStatsForDelta = (list = []) => {
+        const unpnlEl = document.getElementById('desk_stat_unpnl');
+        const marginEl = document.getElementById('desk_stat_margin');
+        const notionalEl = document.getElementById('desk_stat_notional');
+        const countEl = document.getElementById('desk_stat_count');
+        const closeAllBtn = document.getElementById('positions_page_close_all_btn');
+
+        let totalUnPnl = 0;
+        let totalMargin = 0;
+        let totalNotional = 0;
+        list.forEach(p => {
+          const pnl = Number(p.unrealized_pnl || 0);
+          const m = Number(p.margin || 0);
+          const sz = Math.abs(Number(p.size || 0));
+          const mark = Number(p.mark_price || p.entry_price || 0);
+          const cv = Number(p.product?.contract_value || 1);
+          const n = m > 0 && Number(p.leverage || 0) > 0 ? m * Number(p.leverage) : (sz * mark * cv);
+          totalUnPnl += pnl;
+          totalMargin += m;
+          totalNotional += n;
+        });
+
+        if (unpnlEl) {
+          const isPos = totalUnPnl >= 0;
+          unpnlEl.textContent = `${isPos ? '+' : ''}$${totalUnPnl.toFixed(4)}`;
+          unpnlEl.className = `val ${isPos ? 'text-bullish' : 'text-bearish'}`;
+        }
+        if (marginEl) marginEl.textContent = `$${totalMargin.toFixed(2)}`;
+        if (notionalEl) notionalEl.textContent = `$${totalNotional.toFixed(2)}`;
+        if (countEl) countEl.textContent = String(list.length);
+        if (closeAllBtn) closeAllBtn.classList.add('hidden');
+      };
+
       const loadDeltaPositions = async () => {
         if (!deltaPosContainer) return;
         deltaPosContainer.innerHTML = '<div style="padding:24px; text-align:center; color:#94a3b8;">Loading live Delta Exchange India positions...</div>';
         try {
           const res = await adapter.getPositions();
           const list = (res.positions || []).filter(p => Number(p.size) !== 0);
+          updateDeskStatsForDelta(list);
           if (list.length === 0) {
             deltaPosContainer.innerHTML = `
               <div style="padding:32px; text-align:center; color:#94a3b8;">
@@ -3508,8 +3550,9 @@
           }
 
           deltaPosContainer.innerHTML = `
-            <div style="display:flex; justify-content:flex-end; margin-bottom:10px;">
+            <div style="display:flex; justify-content:flex-end; gap:8px; margin-bottom:10px;">
               <button type="button" id="delta_pos_refresh_btn" class="btn-secondary" style="padding:5px 12px; font-size:0.75rem;">Refresh Delta Positions</button>
+              <button type="button" id="delta_pos_close_all_btn" class="btn-purge-ledger" style="padding:5px 12px; font-size:0.75rem;">Close All Delta</button>
             </div>
             <div style="overflow-x:auto;">
               <table style="width:100%; border-collapse:collapse; font-size:0.82rem;">
@@ -3518,8 +3561,10 @@
                     <th style="padding:8px;">Symbol</th>
                     <th style="padding:8px;">Side</th>
                     <th style="padding:8px;">Size</th>
+                    <th style="padding:8px;">Margin</th>
                     <th style="padding:8px;">Entry</th>
                     <th style="padding:8px;">Mark</th>
+                    <th style="padding:8px;">Liq. Price</th>
                     <th style="padding:8px;">Unrealized PnL</th>
                     <th style="padding:8px;">Action</th>
                   </tr>
@@ -3534,8 +3579,10 @@
                         <td style="padding:10px 8px; font-weight:700; color:#f8fafc;">${p.product_symbol}</td>
                         <td style="padding:10px 8px; color:${isLong ? '#34d399' : '#f87171'}; font-weight:700;">${isLong ? 'LONG' : 'SHORT'}</td>
                         <td style="padding:10px 8px;">${Math.abs(sz)}</td>
-                        <td style="padding:10px 8px;">$${Number(p.entry_price || 0).toFixed(2)}</td>
-                        <td style="padding:10px 8px;">$${Number(p.mark_price || 0).toFixed(2)}</td>
+                        <td style="padding:10px 8px;">$${Number(p.margin || 0).toFixed(2)}</td>
+                        <td style="padding:10px 8px;">${fmtDeltaPrice(p.entry_price)}</td>
+                        <td style="padding:10px 8px;">${fmtDeltaPrice(p.mark_price)}</td>
+                        <td style="padding:10px 8px; color:#fbbf24;">${p.liquidation_price ? fmtDeltaPrice(p.liquidation_price) : '-'}</td>
                         <td style="padding:10px 8px; color:${pnl >= 0 ? '#34d399' : '#f87171'}; font-weight:700;">${pnl >= 0 ? '+' : ''}$${pnl.toFixed(4)}</td>
                         <td style="padding:10px 8px;">
                           <button type="button" class="delta-close-pos-btn btn-purge-ledger" data-symbol="${p.product_symbol}" data-size="${Math.abs(sz)}" data-close-side="${isLong ? 'sell' : 'buy'}" style="padding:4px 10px; font-size:0.75rem;">
@@ -3549,6 +3596,18 @@
             </div>`;
 
           deltaPosContainer.querySelector('#delta_pos_refresh_btn')?.addEventListener('click', loadDeltaPositions);
+          deltaPosContainer.querySelector('#delta_pos_close_all_btn')?.addEventListener('click', async () => {
+            if (!window.confirm(`Close ALL ${list.length} open Delta India position(s) at Market?`)) return;
+            for (const p of list) {
+              const sz = Number(p.size || 0);
+              await adapter.closePosition({
+                product_symbol: p.product_symbol,
+                size: Math.abs(sz),
+                side: sz > 0 ? 'sell' : 'buy'
+              }).catch(() => {});
+            }
+            await loadDeltaPositions();
+          });
           deltaPosContainer.querySelectorAll('.delta-close-pos-btn').forEach(btn => {
             btn.addEventListener('click', async () => {
               const sym = btn.dataset.symbol;
@@ -3577,6 +3636,8 @@
         }
         if (deskPosWrapper) deskPosWrapper.style.display = '';
         if (deltaPosContainer) deltaPosContainer.style.display = 'none';
+        const app = window.app || window.__AI_COPILOT_APP__;
+        app?.ui?.renderPositionsPage?.(app.ui._lastPositions || []);
       });
 
       posDeltaBtn?.addEventListener('click', () => {
