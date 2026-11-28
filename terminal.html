@@ -3490,6 +3490,8 @@
       const posDeltaBtn = document.getElementById('pos_src_delta_btn');
       const deskPosWrapper = document.getElementById('desk_positions_table_wrapper');
       const deltaPosContainer = document.getElementById('delta_positions_container');
+      let activePositionsSource = 'website';
+      let lastDeltaPositions = [];
 
       const fmtDeltaPrice = (val) => {
         const n = Number(val || 0);
@@ -3538,6 +3540,7 @@
         try {
           const res = await adapter.getPositions();
           const list = (res.positions || []).filter(p => Number(p.size) !== 0);
+          lastDeltaPositions = list;
           updateDeskStatsForDelta(list);
           if (list.length === 0) {
             deltaPosContainer.innerHTML = `
@@ -3628,6 +3631,7 @@
       };
 
       posWebBtn?.addEventListener('click', () => {
+        activePositionsSource = 'website';
         posWebBtn.style.background = 'rgba(56,189,248,0.22)';
         posWebBtn.style.color = '#38bdf8';
         if (posDeltaBtn) {
@@ -3641,6 +3645,7 @@
       });
 
       posDeltaBtn?.addEventListener('click', () => {
+        activePositionsSource = 'delta';
         posDeltaBtn.style.background = 'rgba(249,115,22,0.25)';
         posDeltaBtn.style.color = '#fb923c';
         if (posWebBtn) {
@@ -3649,8 +3654,27 @@
         }
         if (deskPosWrapper) deskPosWrapper.style.display = 'none';
         if (deltaPosContainer) deltaPosContainer.style.display = 'block';
+        updateDeskStatsForDelta(lastDeltaPositions);
         loadDeltaPositions();
       });
+
+      // Prevent 1s live paper-tick updates from overwriting top stats while Delta India is selected
+      const hookPositionsRender = () => {
+        const ui = (window.app || window.__AI_COPILOT_APP__)?.ui;
+        if (!ui || ui.__deltaPosHooked || !ui.renderPositionsPage) return Boolean(ui);
+        ui.__deltaPosHooked = true;
+        const origRender = ui.renderPositionsPage.bind(ui);
+        ui.renderPositionsPage = function (positions = []) {
+          origRender(positions);
+          if (activePositionsSource === 'delta') {
+            updateDeskStatsForDelta(lastDeltaPositions);
+          }
+        };
+        return true;
+      };
+      const posHookTimer = setInterval(() => {
+        if (hookPositionsRender()) clearInterval(posHookTimer);
+      }, 400);
 
       // 5. Passbook View Toggle (Website vs Delta India)
       const pbWebBtn = document.getElementById('pb_src_website_btn');
