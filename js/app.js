@@ -237,7 +237,6 @@ export class App {
         this.ui.updateHeaderAccountHUD(this.paperTrader.getLiveEquity());
       }
     }).catch(e => console.warn('[App] Post-login downtime audit err:', e));
-    this.ui.showToast('Welcome!', `${user.name || 'Trader'}, trading session active.`, 'success');
   }
 
   getActiveAdapter() {
