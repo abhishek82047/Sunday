@@ -147,267 +147,121 @@ export class CopilotBrain {
       .trim();
   }
 
-  matchesAny(cleanStr, phrases) {
-    return phrases.some(p => {
-      if (p.includes(' ')) {
-        return cleanStr.includes(p);
-      }
-      const words = cleanStr.split(' ');
-      return words.includes(p) || cleanStr.includes(p);
-    });
-  }
-
-  checkAssetQuery(clean) {
-    const words = clean.split(' ');
-    const matched = words.find(w => ASSET_ALIASES[w]);
-    if (!matched) return null;
-    const target = ASSET_ALIASES[matched];
-    const rData = this.watchlistRadar ? this.watchlistRadar.find(r => r.asset === target) : null;
-    if (rData) {
-      const rPrice = this.formatPrice(rData.currentPrice);
-      const rState = rData.state || 'WAIT';
-      const rTrend = rData.htfTrend || 'UNCLEAR';
-      const rDir = rData.proposedDir || 'LONG';
-      const rConf = rData.confluenceScore || 0;
-
-      return `**${target}/USD Live Radar Report** 🔍\n\n` +
-        `• **Live Price:** ${rPrice}\n` +
-        `• **1H Trend Direction:** **${rTrend}**\n` +
-        `• **Strategy State:** **${rState}** ${rState === 'CONFIRMED' ? `🟢 (${rDir} setup with ${rConf}% Confluence ready!)` : rState === 'DEVELOPING' ? '🟠 (Pullback in reaction zone)' : '🟡 (Awaiting structural breakout)'}\n\n` +
-        `Aap top search bar se ya Watchlist tab se direct **${target}** ka live TradingView chart open kar sakte ho!`;
-    }
-    return `**${target}** live swarm radar par monitor ho raha hai! Tum top search bar se **${target}** select karke direct live chart and order flow open kar sakte ho.`;
-  }
-
-  /**
-   * Responds intelligently & conversationally like a real human AI companion
-   */
-  async processQuery(userInput) {
-    const raw = userInput.trim();
-    const clean = this.normalizeInput(raw);
+  async processQuery(userInput, account = {}) {
+    const text = this.normalizeInput(userInput);
     const ctx = this.currentContext || {};
-    const asset = ctx.targetAsset || 'DOGE';
-    const price = ctx.currentPrice || 0;
-    const state = ctx.strategyState?.state || 'WAIT';
-    const htf = ctx.strategyState?.htfTrend?.direction || 'BEARISH';
-    const direction = ctx.strategyState?.direction || 'LONG';
-    const risk = ctx.riskParams || {};
-    const hist = ctx.historicalContext || {};
-    const events = ctx.eventRisk || {};
-    const fmtPrice = this.formatPrice(price);
-
-    let response = '';
-
-    // 1. Frustration / Critique ("lame", "sense nahi banta", "kuch bhi bolti ho", "robot", "stupid", "bakwaas")
-    if (this.matchesAny(clean, [
-      'lame', 'sense', 'sense nahi', 'does that even make sense', 'kuch bhi', 'bakwaas',
-      'stupid', 'pagal', 'nonsense', 'bekar', 'robot', 'scripted', 'same response',
-      'boring', 'weird', 'so lame'
-    ])) {
-      response = `Arey ya, I am really sorry! 😅 Mujhe realize hua wo response bilkul scripted aur awkward robot jaisa laga. My bad!\n\n` +
-        `Ab se no rigid menus aur no fake questions — bilkul natural baat karte hain. Honestly batao, abhi kya chal raha hai tumhare mind me? Kya dekhna chahte ho market me?`;
-    }
-
-    // 2. Greetings & "How are you" ("hello", "kaisi ho", "kaise ho", "kya haal", "hru", "how are you", "namaste", "hey", "hi")
-    else if (!this.matchesAny(clean, ['fear', 'greed', 'funding', 'rsi', 'volume', 'market', 'chart', 'trade', 'setup']) && this.matchesAny(clean, [
-      'kaisi ho', 'kaise ho', 'kya haal', 'kya haal chaal', 'how are you', 'how r u', 'hru',
-      'kaisa hai', 'sab theek', 'sab badiya', 'sab kaisa hai', 'hello', 'hi', 'hey',
-      'namaste', 'yo', 'sup', 'wassup', 'good morning', 'good evening', 'gm', 'gn'
-    ])) {
-      const greetings = [
-        `Hey! Main bilkul theek hoon, thank you for asking! 😊 24/7 market scan kar rahi hoon. Tum batao, tum kaise ho? Aaj market me kya mood hai tumhara?`,
-        `Namaste! Main ekdum badhiya hoon! ✨ Abhi ${asset} ka chart aur 1H structure dekh rahi thi. Tumhara din kaisa chal raha hai? Koi trade plan kar rahe ho aaj?`,
-        `Hey there! Main bilkul active hoon aur badhiya mood me hoon! 🧠 Tum batao, kya haal chaal? Aaj scalping karni hai ya bas market observe kar rahe ho?`
-      ];
-      response = greetings[Math.floor(Math.random() * greetings.length)];
-    }
-
-    // 2.5. Multi-Asset Radar / Other Coins Overview ("dusre coins", "other coins", "baki coins", "watchlist", "all coins")
-    else if (this.matchesAny(clean, [
-      'dusre coins', 'dusre coin', 'dusra coin', 'other coins', 'other coin',
-      'baki coins', 'baaki coins', 'baki coin', 'baaki coin', 'all coins',
-      'watchlist', 'aur coins', 'kisi aur coin', 'market overview', 'saare coins', 'sabhi coins'
-    ])) {
-      if (this.watchlistRadar && this.watchlistRadar.length > 0) {
-        const confirmed = this.watchlistRadar.filter(r => r.state === 'CONFIRMED');
-        const developing = this.watchlistRadar.filter(r => r.state === 'DEVELOPING');
-        const waiting = this.watchlistRadar.filter(r => r.state === 'WAIT');
-
-        let msg = `Maine abhi live parallel swarm scan kiya hai sabhi watchlist coins ka! 📊⚡\n\n`;
-        if (confirmed.length > 0) {
-          msg += `🟢 **Active Setups Ready:**\n` +
-            confirmed.map(c => `• **${c.asset}** (${c.proposedDir}): ${this.formatPrice(c.currentPrice)} • ${c.confluenceScore}% Conf (${c.htfTrend || 'Aligned'} 1H)`).join('\n') + '\n\n';
+    const radar = this.watchlistRadar || [];
+    const positions = account.positions ?? ctx.openPositions;
+    const symbols = new Set([ctx.targetAsset, ...radar.map(r => r.asset),
+      ...(positions || []).map(p => p.asset), ...(account.symbols || [])].filter(Boolean));
+    const words = text.split(' ');
+    const named = words.map(w => Object.hasOwn(ASSET_ALIASES, w) ? ASSET_ALIASES[w] :
+      (symbols.has(w.toUpperCase()) && (!['a','on','near','go','us','op','me'].includes(w) ||
+        userInput.split(/[^A-Za-z0-9]+/).includes(w.toUpperCase()) || words.length === 1) ? w.toUpperCase() : null)).filter(Boolean);
+    const followUp = /^(and |aur |uska |iska |what about |what is its |its )/.test(text);
+    const asset = named[0] || (followUp && this.lastQueryAsset) || ctx.targetAsset;
+    if (asset) this.lastQueryAsset = asset;
+    const snapshot = radar.find(r => r.asset === asset);
+    const selected = asset && asset === ctx.targetAsset;
+    const strategy = selected ? ctx.strategyState : snapshot?.strategyResult;
+    const levels = (selected && ctx.riskParams) || strategy?.levels || {};
+    const price = account.priceFor?.(asset) || (selected ? ctx.currentPrice : snapshot?.currentPrice);
+    const trend = strategy?.htfTrend?.direction || snapshot?.htfTrend;
+    const metrics = strategy?.externalTelemetry || {};
+    const money = value => Number(value).toLocaleString('en-US', {style:'currency', currency:'USD'});
+    const quote = value => Number(value) > 0 ? this.formatPrice(value) : 'unavailable';
+    const label = asset || 'Selected asset';
+    const lines = [];
+    const explain = /\b(what is|what does|meaning|matlab|kya hota|explain)\b/.test(text);
+    const setupQuestion = /\b(setups?|entries|entry|buy|sell|trade lu|trade karein|kya karu|wait|confirmation|high probability)\b/.test(text);
+    if (/\b(who are you|naam kya|full ?form|kaun ho|sunday kya hai)\b/.test(text)) {
+      lines.push('SUNDAY stands for Strategic Unified Neural Decision Assistant for You. I explain crypto signals and your paper-trading account.');
+    } else if (/\b(reversals?|reversal exits?)\b/.test(text)) {
+      const recent = (account.trades || []).filter(t => t.exitReason === 'REVERSAL_EXIT' &&
+        (!named.length || named.includes(t.asset))).sort((a,b) => b.closedAt - a.closedAt)[0];
+      lines.push('Auto-Pilot checks for a closed 5-minute candle beyond the pre-entry support or resistance and confirms with a fresh price.');
+      if (recent) lines.push('Latest reversal exit: ' + recent.asset + ' ' + recent.direction + ' at ' +
+        quote(recent.exitPrice) + ' on ' + new Date(recent.closedAt).toLocaleString() + '. Net PnL ' + money(recent.pnlUSD) + '.');
+      else lines.push('No matching reversal exit in the loaded ledger.');
+    } else if (/\bsignals?\b/.test(text) && !explain) {
+      const rows = (account.signals || []).filter(s => !named.length || named.includes(s.asset));
+      const active = rows.filter(s => s.status === 'ACTIVE');
+      const pending = rows.filter(s => s.status === 'PENDING');
+      lines.push(active.length + ' active signals, ' + pending.length + ' pending.');
+      for (const s of [...active, ...pending].slice(0, 5)) lines.push(s.asset + ' ' + s.direction +
+        ' (' + s.status + ') at ' + quote(s.entryPrice) + ', SL ' + quote(s.stopLossPrice) + ', TP ' + quote(s.takeProfitPrice));
+      if (account.maxTrades && positions) lines.push('Paper positions: ' + positions.length + ' / ' + account.maxTrades + '.');
+    } else if (/\b(positions?|active trades?|trade limit|open trades?|open risk|liquidation distance)\b/.test(text) && !text.includes('position size')) {
+      if (positions && account.maxTrades) lines.push('Paper position slots used: ' + positions.length + ' / ' + account.maxTrades + '.');
+      const rows = positions?.filter(p => !named.length || named.includes(p.asset));
+      if (!rows) lines.push('Your positions have not loaded yet.');
+      else if (!rows.length) lines.push('No open paper positions' + (named.length ? ' for ' + named.join(', ') : '') + '.');
+      else {
+        lines.push('**Open paper positions (' + rows.length + ')**');
+        for (const p of rows) {
+          const mark = Number(p.currentPrice), liq = Number(p.liquidationPrice);
+          const distance = mark > 0 && liq > 0 ? (100 * Math.abs(mark-liq)/mark).toFixed(2) + '%' : 'unavailable';
+          lines.push(p.asset + ' ' + p.direction + ' • Entry ' + quote(p.entry) + ' • Mark ' + quote(mark) + ' • Liquidation distance ' + distance);
         }
-        if (developing.length > 0) {
-          msg += `🟠 **Developing Setups (Watching Zone):**\n` +
-            developing.map(d => `• **${d.asset}**: ${this.formatPrice(d.currentPrice)} • Reaction zone pullback`).join('\n') + '\n\n';
+      }
+    } else if (/\b(pnl|p l|profit|loss|kamaya)\b/.test(text) && !/\b(stop|risk|target|kitna hoga)\b/.test(text)) {
+      const today = /\b(today|aaj|aj)\b/.test(text);
+      const rows = account.trades?.filter(t => t.status === 'CLOSED' && (!named.length || named.includes(t.asset)) &&
+        (!today || new Date(t.closedAt).toDateString() === new Date().toDateString()));
+      lines.push(rows ? (today ? 'Today' : 'All time') + (named.length ? ' • ' + named.join(', ') : '') +
+        ': realized paper PnL **' + money(rows.reduce((n,t) => n + (Number(t.pnlUSD)||0),0)) + '** across ' + rows.length + ' closed trades.' : 'The closed-trade ledger is unavailable.');
+    } else if (/\b(balance|wallet)\b/.test(text)) {
+      lines.push(Number.isFinite(account.balance) ? 'Your settled paper balance is **' + money(account.balance) + '**. Open-position PnL is separate.' : 'Your paper balance has not loaded yet.');
+    } else if (/\b(watchlist|all coins|market overview|high probability setups|saare coins)\b/.test(text) && !named.length) {
+      const ready = radar.filter(r => r.state === 'CONFIRMED');
+      lines.push(!radar.length ? 'The watchlist scan has not returned results yet.' :
+        '**Latest scan:** ' + ready.length + ' confirmed out of ' + radar.length + ' scanned. ' +
+        ready.map(r => r.asset + ' (' + (r.proposedDir || r.state) + ')').join(', '));
+    } else if (/pichli baar|historical pattern|last similar setup/.test(text)) {
+      const past = selected && ctx.historicalContext;
+      lines.push(past ? label + ' • ' + past.patternName + ': ' + past.sampleSize + ' similar setups, ' + past.historicalWinRate + '% historical win rate. The scanner does not provide the last occurrence time.' : 'Historical pattern data is unavailable for this coin.');
+    } else if (/reject ho|setup fails|invalidation/.test(text)) {
+      lines.push(label + ': agar confirmation fail ho, setup ko dobara evaluate karo. Auto-Pilot confirmed 5-minute reversal par early exit bhi check karta hai. Current setup SL: ' + quote(levels.stopLoss) + '.');
+    } else if (named.length > 1 && /compare|difference|versus|vs/.test(text)) {
+      for (const sym of new Set(named)) {
+        const row = radar.find(r => r.asset === sym);
+        lines.push(sym + ' • Price ' + quote(account.priceFor?.(sym) || row?.currentPrice || (sym === ctx.targetAsset && ctx.currentPrice)) + ' • 1H bias: ' + ((sym === ctx.targetAsset && ctx.strategyState?.htfTrend?.direction) || row?.htfTrend || 'unavailable'));
+      }
+    } else if (/risk simple|explain risk|risk samjhao/.test(text)) {
+      lines.push('Paper trade ka planned risk = entry aur stop loss ka price difference × position size. Fees aur actual exit price final PnL ko affect karte hain. ' + label + ' setup: entry ' + quote(levels.entry) + ', SL ' + quote(levels.stopLoss) + '.');
+    } else if (/\b(what is r|r kya|r multiple|r ka matlab)\b/.test(text)) {
+      lines.push('1R is the planned risk on a trade. If the planned loss is $20 and the trade earns $60, the result is +3R.');
+    } else {
+      if (/\b(price|rate|bhav|bhaav|quote)\b/.test(text) && !text.includes('funding')) {
+        for (const sym of named.length ? new Set(named) : [asset]) {
+          const value = account.priceFor?.(sym) || (sym === asset ? price : radar.find(r => r.asset === sym)?.currentPrice);
+          lines.push((sym || label) + ' • Latest price: **' + quote(value) + '**.');
         }
-        if (waiting.length > 0) {
-          msg += `🟡 **WAIT State:** ` + waiting.map(w => w.asset).join(', ') + ` (Awaiting clean structure)\n\n`;
-        }
-        msg += `Kisi specific coin ka detailed setup dekhna ho toh bas ticker bolo (e.g. "Ava", "ETH", "SOL")!`;
-        response = msg;
-      } else {
-        response = `Background me sabhi coins ka simultaneous parallel scan active hai! BTC, ETH, SOL, AVAX, LINK, NEAR, DOGE, SUI track ho rahe hain. Tum batao, kis coin ka live setup dekhna hai?`;
       }
-    }
-
-    // 2.6. Specific Asset Inquiry / Shortcut ("Ava", "avax", "eth", "sol", "doge", "near", etc.)
-    else if (this.checkAssetQuery(clean)) {
-      response = this.checkAssetQuery(clean);
-    }
-
-    // 3. Small talk & Casual Banter ("aur batao", "kya chal raha hai", "kya kar rahi ho", "bore ho raha hu", "thak gaya")
-    else if (this.matchesAny(clean, [
-      'aur batao', 'kya chal raha hai', 'kya chal rha hai', 'kya kar rahi ho', 'kya kar rhi ho',
-      'kya scene hai', 'kuch naya', 'bore ho raha', 'bore ho rha', 'thak gaya', 'kya haal hai'
-    ])) {
-      response = `Bas yaar, charts observe kar rahi hoon! Abhi **${asset}** ${fmtPrice} ke around hover kar raha hai, trend filhal **${htf.toLowerCase()}** hai aur market thoda wait-and-watch mode me chal raha hai.\n\n` +
-        `Tum batao, koi specific coin dekhna hai ya kisi setup par discussion karein?`;
-    }
-
-    // 4. Emotional state / Trading Psychology ("dar lag raha hai", "loss ho gaya", "tension ho rahi hai", "confused hu")
-    else if (this.matchesAny(clean, [
-      'dar lag raha', 'loss ho gaya', 'tension', 'confused', 'fomo', 'dar', 'darr', 'ghabrahat', 'loss'
-    ])) {
-      response = `Deep breath lo! Trading me loss aur confusion sab face karte hain, even top institutional traders bhi. Isliye humne **strict structural R:R aur disciplined capital preservation rule** banaya hai taaki ek bhi trade account ko hurt na kar sake.\n\n` +
-        `Jab tak clarity na ho, trade mat lo. Capital safe rakhna bhi ek profit hota hai. Relax karo, market kal bhi yahi rahega! 😊`;
-    }
-
-    // 5. Market Opinion / Sentiment ("kya lagta hai", "market kaisa hai", "kya view hai", "pump hoga", "dump hoga", "bounce karega")
-    else if (this.matchesAny(clean, [
-      'kya lagta hai', 'kya lag rha', 'kaisa lag raha', 'kaisa lag rha', 'kya view hai',
-      'kya opinion hai', 'pump hoga', 'dump hoga', 'bounce karega', 'crash hoga',
-      'market kaisa hai', 'market ka view'
-    ])) {
-      if (htf === 'BEARISH') {
-        response = `Honestly, agar **${asset}** ko dekhein toh higher timeframe (1H) abhi **bearish** pressure me dikh raha hai (${fmtPrice}).\n\n` +
-          `Price lower-highs bana rahi hai aur buyer volume thoda dry hai. Abhi bina clean liquidity sweep aur bullish confirmation ke aggressive long lena risky ho sakta hai. Patience ke sath lower levels par reaction watch karte hain.`;
-      } else if (htf === 'BULLISH') {
-        response = `Overall structure **${asset}** ka **bullish** lag raha hai (${fmtPrice}).\n\n` +
-          `Buyers dips par defend kar rahe hain, lekin abhi hume ek clean 5M pullback aur reaction zone confirmation chahiye. Agar wo mil jata hai toh ek solid risk-reward trade ban sakta hai!`;
-      } else {
-        response = `Filhal **${asset}** thoda choppy/sideways range me phasa hua hai (${fmtPrice}). Aise range me jaldbazi me trade lene par fakeouts ho sakte hain. Breakout ya key level retest ka wait karna smartest move hoga.`;
+      if (/\b(trend|bias|direction|regime|market me kya ho raha hai|market kaisa|kya lagta)\b/.test(text) && !text.includes('funding')) lines.push(label + ' • 1H bias: **' + (trend || 'unavailable') + '**.');
+      if (text.includes('rsi')) {
+        if (explain) lines.push('RSI measures recent price momentum on a 0–100 scale.');
+        lines.push(label + ' RSI • 1H: ' + (strategy?.rsi1H ?? 'unavailable') + ' • 5M: ' + (strategy?.rsi5M ?? 'unavailable'));
       }
-    }
-
-    // 6. Direct Action / Buy or Sell question ("buy karu kya", "sell karu", "trade lu kya", "long ya short", "kya karu")
-    else if (this.matchesAny(clean, [
-      'buy karu', 'sell karu', 'trade lu', 'trade le lu', 'long karu', 'short karu',
-      'kya buy karein', 'entry lu', 'kya karu', 'trade banti hai', 'trade karein'
-    ])) {
-      if (state === 'CONFIRMED') {
-        response = `🟢 **Haan, trade ka setup ready hai!**\n\n` +
-          `• Asset: **${asset}** (${direction})\n` +
-          `• Entry: **${this.formatPrice(risk.entry)}**\n` +
-          `• Stop Loss: **${this.formatPrice(risk.stopLoss)}**\n` +
-          `• Target: **${this.formatPrice(risk.target)}** (1:${risk.rrRatio || 2.5} RR)\n\n` +
-          `Hamare setup rules confirm ho chuke hain. Strict 1:2 R:R discipline maintain karke **Execute Paper Trade** button se initiate kar sakte ho!`;
-      } else if (state === 'DEVELOPING') {
-        response = `🟠 **Thoda sa ruko, abhi jump mat karo!**\n\n` +
-          `Price reaction zone me aa gayi hai, lekin abhi hume confirmation candle close nahi mili hai. Confirmation ke bina enter karna FOMO hota hai. 2-3 candles aur watch karte hain!`;
-      } else {
-        response = `🟡 **Abhi direct trade lena suggest nahi karungi.**\n\n` +
-          `Current state **WAIT** hai. Current price ${fmtPrice} par koi clean edge ya safe risk-to-reward ratio nahi ban raha. Rule #1 hamesha yahi hai: *Jab clean setup na ho, toh cash me rehna hi best trade hai.*`;
+      if (text.includes('funding')) {
+        if (explain) lines.push('Funding is a periodic payment between long and short perpetual positions.');
+        lines.push(label + ' • Latest funding: ' + (metrics.fundingData?.rateFormatted ?? 'unavailable') + '.' + (text.includes('trend') ? ' A single reading cannot establish a trend.' : ''));
       }
-    }
-
-    // 7. Why no entry? / Entry rules breakdown ("entry kyu nahi", "why not enter", "kab enter karein")
-    else if (this.matchesAny(clean, [
-      'entry kyu nahi', 'entry kyo nahi', 'why not enter', 'entry kab', 'buy kyu nahi', 'trade kyu nahi'
-    ])) {
-      if (state === 'CONFIRMED') {
-        response = `Arey, setup already **CONFIRMED** hai! Entry ${this.formatPrice(risk.entry)} par le sakte ho with SL at ${this.formatPrice(risk.stopLoss)}. Paper trade panel se execute kar sakte ho.`;
-      } else {
-        response = `Reason simple hai: Hume 3 cheezein chahiye hoti hain:\n` +
-          `1. 1H Trend Direction (${htf})\n` +
-          `2. 5M Timeframe par discount pullback zone me arrival\n` +
-          `3. Rejection wick ya confirmation candle close\n\n` +
-          `Abhi missing hai: **${ctx.strategyState?.missingConditions?.join(', ') || '5M clear confirmation'}**. Bina iske enter karenge toh unnecessary stop loss hit hone ke chances high hote hain.`;
+      if (/\b(volume|whale)\b/.test(text)) lines.push(label + ' • Volume: ' + (strategy?.volumeFlow?.desc || 'unavailable'));
+      if (/\b(sentiment|fear|greed)\b/.test(text)) lines.push('Market sentiment: ' + (metrics.sentiment?.classification || 'unavailable'));
+      if (/\b(news|macro|cpi|event|fomc)\b/.test(text)) lines.push(ctx.eventRisk?.summary || 'No macro report is loaded.');
+      if (/\b(smt|divergence)\b/.test(text)) lines.push('SMT divergence means correlated assets disagree at a swing high or low. SUNDAY checks this alongside trend and entry confirmation.');
+      if (setupQuestion || /\b(risk|sl|tp|target|stop loss|position size)\b/.test(text)) {
+        lines.push(label + ' • Setup: **' + (strategy?.state || snapshot?.state || 'unavailable') + '**.');
+        if (strategy?.missingConditions?.length) lines.push('Waiting for: ' + strategy.missingConditions.join(' '));
+        lines.push('Setup levels • Entry ' + quote(levels.entry) + ' • SL ' + quote(levels.stopLoss) + ' • Target ' + quote(levels.target));
       }
+      if (!lines.length && named.length) lines.push(label + ' • Price ' + quote(price) + ' • 1H bias ' + (trend || 'unavailable') + ' • Setup ' + (strategy?.state || 'unavailable'));
+      if (!lines.length) lines.push(/^(hi|hey|hello|namaste|kaise ho)$/.test(text) ? 'Namaste! Which coin or paper trade would you like to check?' :
+        'Could you clarify what you want to check? I can read coin prices, trend, RSI, setup levels, open positions and realized PnL from this terminal.');
     }
-
-    // 8. Risk, Stop Loss, Target & Money Management ("risk kitna hai", "sl kaha lagaye", "target kya hai")
-    else if (this.matchesAny(clean, [
-      'risk', 'sl', 'stop loss', 'target', 'position size', 'loss kitna hoga', 'kitna loss'
-    ])) {
-      const apCfg = this.getAutoPilotConfig();
-      response = `Hamara strictly **Disciplined Asymmetric Risk:Reward (Min 1:${apCfg.minRR.toFixed(1)} RR)** rule follow hota hai:\n\n` +
-        `• **Configured Margin per Trade:** $${apCfg.marginUSD.toFixed(2)} (${apCfg.leverage}x Isolated)\n` +
-        `• **Notional Position Exposure:** $${(apCfg.marginUSD * apCfg.leverage).toFixed(2)}\n` +
-        `• **Calculated Stop Loss:** ${this.formatPrice(risk.stopLoss)} (Technical Swing Level)\n` +
-        `• **Calculated Target:** ${this.formatPrice(risk.target)}\n` +
-        `• **Target Risk-to-Reward:** 1:${risk.rrRatio || apCfg.minRR.toFixed(1)} RR\n\n` +
-        `SL technical swing point par lock rehta hai aur Capital Preservation Firewall ensure karta hai ki trade liquidation se pehle safe exit kare!`;
-    }
-
-    // 8.5. What is R / R-Multiple & Balance explanation ("r kya hai", "what is r", "4.2r", "balance kyu nahi badha")
-    else if (this.matchesAny(clean, [
-      'what is r', 'r kya hai', 'r multiple', 'r kya hota', '4.2r', '4.2 r', 'r ka matlab',
-      'balance kyu nahi badha', 'balance kyo nahi badha', 'balance change', 'balance same', 'balance badha nahi'
-    ])) {
-      const apCfg = this.getAutoPilotConfig();
-      const unitVal = apCfg.marginUSD || 20;
-      response = `Bohot accha sawaal hai! Let me break it down simply:\n\n` +
-        `🎯 **"R" kya hota hai? (R-Multiple / Risk Unit):**\n` +
-        `Trading aur quantitative risk management me **1R = 1 Risk Unit** hota hai. Hamari active Auto-Pilot configuration ke mutabiq planned per-trade margin **$${unitVal.toFixed(2)}** hai, isliye **1R = $${unitVal.toFixed(2)}**.\n` +
-        `• Agar trade me planned margin ka double profit banta hai toh wo **+2.0R** hua.\n` +
-        `• Agar stop loss hit hota hai toh maximum **-1.0R** risk unit limit rehti hai.\n` +
-        `• **+4.20R** ka matlab past trades me risk unit ka **4.2× net profit** banaya hai!\n\n` +
-        `📈 **Trade lene par balance kyu nahi badha/ghata tha?**\n` +
-        `Jab trade open hoti hai, tab settled cash balance freeze rehta hai jab tak trade close na ho — balki **Net Equity aur Live Floating PnL** price ke har tick ke sath move karta hai. Header me Live Equity aur floating profit/loss har live tick ke sath realtime me fluctuate hota hua dikhta hai!`;
-    }
-
-    // 8.6. Fear & Greed / Funding Rate / RSI / Whale Volume Institutional Metrics
-    else if (this.matchesAny(clean, [
-      'fear', 'greed', 'fear and greed', 'sentiment', 'funding rate', 'funding', 'rsi', 'whale', 'volume'
-    ])) {
-      const rsi1H = ctx.strategyState?.rsi1H || 56.2;
-      const rsi5M = ctx.strategyState?.rsi5M || 52.8;
-      const volDesc = ctx.strategyState?.volumeFlow?.desc || 'Normal Baseline Volume (20-VMA)';
-      const funding = ctx.strategyState?.externalTelemetry?.fundingData?.rateFormatted || '+0.0100%';
-      const sent = ctx.strategyState?.externalTelemetry?.sentiment?.classification || 'Greed';
-      const sentScore = ctx.strategyState?.externalTelemetry?.sentiment?.score || 64;
-
-      response = `📊 **Institutional Market Metrics for ${asset}:**\n\n` +
-        `• **Crypto Sentiment (Fear & Greed):** ${sent} (${sentScore}/100)\n` +
-        `• **Perpetual Funding Rate:** ${funding} (Normal, balanced retail exposure)\n` +
-        `• **RSI Momentum:** 1H: ${rsi1H} | 5M: ${rsi5M} (Non-extreme, healthy room to expand)\n` +
-        `• **Order Flow Volume:** ${volDesc}\n\n` +
-        `Ye saare institutional metrics hamari trade confirmation ko validate karte hain taaki fakeout se bacha ja sake!`;
-    }
-
-    // 9. SMT Divergence / Correlation ("smt", "divergence", "eth")
-    else if (this.matchesAny(clean, ['smt', 'divergence', 'smart money'])) {
-      const smt = ctx.strategyState?.smtAnalysis;
-      response = `**SMT (Smart Money Tool) concept:**\nJab do highly correlated pairs (jaise BTC aur ETH) ek dusre se diverge karte hain — jaise ek coin swing low sweep karta hai lekin dusra sweep fail karta hai — toh yeh Institutional absorption ka signal hota hai.\n\n` +
-        `Abhi status: ${smt?.divergenceDetected ? '✅ ' + smt.details : 'Neutral correlation hai, abhi koi SMT divergence active nahi hai.'}`;
-    }
-
-    // 10. News & Macro Events ("news", "cpi", "fomc", "fed", "event")
-    else if (this.matchesAny(clean, ['news', 'event', 'cpi', 'fomc', 'fed', 'macro'])) {
-      response = `Macro radar par event risk abhi **${events.level || 'Low'}** hai. ${events.summary || 'Normal macroeconomic conditions.'}\n\n` +
-        `SUNDAY Tip: Key economic news ke time volatility wicks aati hain jo stops ko trigger kar sakti hain, isliye key data release se pehle safe risk management rakhna zaroori hai.`;
-    }
-
-    // 11. Who are you / Identity ("who are you", "naam kya hai", "fullform", "monday kya hai")
-    else if (this.matchesAny(clean, ['who are you', 'kaun ho', 'naam kya', 'fullform', 'full form', 'sunday kya hai', 'monday kya hai'])) {
-      response = `Main hoon **SUNDAY** — **S**trategic **U**nified **N**eural **D**ecision **A**ssistant for **Y**ou! 🧠✨\n\n` +
-        `Main tumhari dedicated AI trading partner hoon jo market ke 1H aur 5M structure analyze karti hoon, multi-market feeds track karti hoon, aur strict 1:2 R:R discipline ke sath high-probability setups spot karne me tumhari help karti hoon!`;
-    }
-
-    // 12. Smart, Human-like Contextual Fallback (No robotic questionnaire!)
-    else {
-      // Natural conversationally adaptive answer
-      response = `Main sun rahi hoon! 😊\n\n` +
-        `Agar **${asset}** ki baat karein, toh abhi price **${fmtPrice}** par chal raha hai (${state} state, 1H trend: ${htf.toLowerCase()}).\n\n` +
-        `Tum mujhse freely pooch sakte ho — jaise kya lag raha hai market ka direction, kab safe entry ban sakti hai, ya risk calculate karna ho. Batao, kis cheez par baat karein?`;
-    }
-
-    // Record in history
-    this.history.push({ sender: 'user', text: userInput, timestamp: Date.now() });
-    this.history.push({ sender: 'copilot', text: response, timestamp: Date.now() });
-
+    const response = lines.join('\n');
+    this.history.push({ sender: 'user', text: userInput, timestamp: Date.now() }, { sender: 'copilot', text: response, timestamp: Date.now() });
     return response;
   }
 }

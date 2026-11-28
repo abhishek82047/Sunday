@@ -137,7 +137,7 @@ export class SignalEngine {
             // User-Level Watermark Filter: Purge archived signals cleared before watermark
             if (this.archivedClearedAt > 0) {
               sanitized = sanitized.filter(s => {
-                const isArchived = s.status === 'TP_HIT' || s.status === 'SL_HIT' || s.status === 'EXPIRED' || s.status === 'INVALIDATED';
+                const isArchived = s.status === 'REVERSAL_EXIT' || s.status === 'TP_HIT' || s.status === 'SL_HIT' || s.status === 'EXPIRED' || s.status === 'INVALIDATED';
                 if (!isArchived) return true;
                 const t = s.closedAt || s.issuedAt || 0;
                 return t > this.archivedClearedAt;
@@ -195,7 +195,7 @@ export class SignalEngine {
     const beforeCount = this.signals.length;
     this.signals = this.signals.filter(s => {
       if (s.inPortfolio || (s.tradeId && s.tradeId.startsWith('TRADE-'))) return true;
-      if (s.status === 'TP_HIT' || s.status === 'SL_HIT') return true;
+      if (s.status === 'REVERSAL_EXIT' || s.status === 'TP_HIT' || s.status === 'SL_HIT') return true;
       const sKey = `${s.asset}_${s.direction}_${formatLevelPrice(s.entryPrice, s.asset)}`;
       return cloudIds.has(s.id) || cloudKeys.has(sKey);
     });
@@ -222,7 +222,7 @@ export class SignalEngine {
       );
 
       // Filter out cloud signals that were cleared by this user's archive watermark
-      const isArchived = status === 'TP_HIT' || status === 'SL_HIT' || status === 'INVALIDATED' || status === 'EXPIRED';
+      const isArchived = status === 'REVERSAL_EXIT' || status === 'TP_HIT' || status === 'SL_HIT' || status === 'INVALIDATED' || status === 'EXPIRED';
       const sigTime = ct.closed_at ? new Date(ct.closed_at).getTime() : (meta.closedAt || meta.issuedAt || (ct.created_at ? new Date(ct.created_at).getTime() : 0));
       if (isArchived && this.archivedClearedAt > 0 && sigTime <= this.archivedClearedAt) {
         // If it was already loaded locally, prune it
@@ -235,6 +235,7 @@ export class SignalEngine {
 
       if (existingIndex >= 0) {
         const existing = this.signals[existingIndex];
+        if (existing.status === 'REVERSAL_EXIT' && status !== existing.status) continue;
         // Cloud-First Authority: Always mirror canonical cloud state
         if (existing.status !== status) {
           existing.status = status;
@@ -622,6 +623,26 @@ export class SignalEngine {
   onPositionClosed(closedPos, result = null, exitPrice = null) {
     if (!closedPos || !closedPos.asset) return;
     const now = Date.now();
+    if (closedPos.exitReason === 'REVERSAL_EXIT') {
+      let sig = this.signals.find(s => s.tradeId === closedPos.id) ||
+        this.signals.find(s => !s.tradeId && s.asset === closedPos.asset && s.direction === closedPos.direction &&
+          (s.status === 'ACTIVE' || s.status === 'REVERSAL_EXIT') &&
+          Number(s.entryPrice) === Number(formatLevelPrice(closedPos.entry, closedPos.asset)) &&
+          Number(s.takeProfitPrice) === Number(formatLevelPrice(closedPos.target, closedPos.asset)));
+      if (!sig) {
+        sig = { id: 'SIG-' + closedPos.id, asset: closedPos.asset, direction: closedPos.direction,
+          entryPrice: closedPos.entry, stopLossPrice: closedPos.stopLoss, takeProfitPrice: closedPos.target,
+          riskReward: closedPos.rrRatio, issuedAt: closedPos.openedAt, filledAt: closedPos.openedAt,
+          currencySymbol: '$', orderType: 'MARKET', rationale: closedPos.conditions || [] };
+        this.signals.unshift(sig);
+      }
+      if (sig.status === 'REVERSAL_EXIT' && sig.tradeId === closedPos.id) return;
+      Object.assign(sig, { status: 'REVERSAL_EXIT', tradeId: closedPos.id, inPortfolio: false,
+        closedAt: closedPos.closedAt, realizedR: closedPos.rMultiple, exitPrice: closedPos.exitPrice });
+      this.saveSignals();
+      if (sig !== this.signals[0]) this.onSignalChangeCallback?.(sig);
+      return;
+    }
     const sig = this.signals.find(s => 
       (closedPos.id && s.tradeId === closedPos.id) || 
       (s.asset === closedPos.asset && s.status === 'ACTIVE')
@@ -806,7 +827,7 @@ export class SignalEngine {
   getSignals(filter = 'ALL') {
     this.checkTimeouts();
     const visible = this.signals.filter(s => {
-      const isArchived = s.status === 'TP_HIT' || s.status === 'SL_HIT' || s.status === 'EXPIRED' || s.status === 'INVALIDATED';
+      const isArchived = s.status === 'REVERSAL_EXIT' || s.status === 'TP_HIT' || s.status === 'SL_HIT' || s.status === 'EXPIRED' || s.status === 'INVALIDATED';
       if (isArchived && this.archivedClearedAt > 0) {
         const t = s.closedAt || s.issuedAt || 0;
         if (t <= this.archivedClearedAt) return false;
@@ -821,7 +842,7 @@ export class SignalEngine {
       return visible.filter(s => s.status === 'ACTIVE');
     }
     if (filter === 'COMPLETED') {
-      return visible.filter(s => s.status === 'TP_HIT' || s.status === 'SL_HIT');
+      return visible.filter(s => s.status === 'REVERSAL_EXIT' || s.status === 'TP_HIT' || s.status === 'SL_HIT');
     }
     if (filter === 'EXPIRED') {
       return visible.filter(s => s.status === 'EXPIRED' || s.status === 'INVALIDATED');

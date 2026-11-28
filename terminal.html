@@ -2850,7 +2850,7 @@
               <div class="field-label-row">
                 <label for="select_autopilot_maxtrades" class="settings-label">
                   Max Concurrent Trades
-                  <span class="help-tooltip-trigger" tabindex="0" title="Auto-Pilot throttles and refuses new entries if this limit is reached until an open trade hits TP or SL." data-tooltip="Auto-Pilot throttles and refuses new entries if this limit is reached until an open trade hits TP or SL.">
+                  <span class="help-tooltip-trigger" tabindex="0" title="Auto-Pilot throttles and refuses new entries if this limit is reached until a position closes. Auto-Pilot also checks open positions for confirmed 5-minute reversals." data-tooltip="Auto-Pilot throttles and refuses new entries if this limit is reached until a position closes. Auto-Pilot also checks open positions for confirmed 5-minute reversals.">
                     <i class="ph ph-question"></i>
                   </span>
                 </label>
@@ -2859,6 +2859,7 @@
                 <option value="2" selected>2 Trades (Conservative)</option>
                 <option value="5">5 Trades (Moderate)</option>
                 <option value="10">10 Trades (Active Basket)</option>
+                <option value="20">20 Trades</option>
                 <option value="30">30 Trades (Multi-Asset Diversified)</option>
                 <option value="50">50 Trades (Portfolio Scale)</option>
                 <option value="70">70 Trades (High-Capacity Swarm)</option>

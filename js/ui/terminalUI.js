@@ -3318,7 +3318,7 @@ export class TerminalUI {
     const pageContainer = document.getElementById('copilot_page_messages_feed');
 
     // Simple markdown conversion for bold, bullets, line breaks
-    let formatted = text
+    const formatted = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
       .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
       .replace(/\n/g, '<br/>')
       .replace(/•/g, '&bull;');
@@ -3846,10 +3846,11 @@ export class TerminalUI {
         pendingCount++;
       } else if (s.status === 'ACTIVE') {
         activeCount++;
-      } else if (s.status === 'TP_HIT' || s.status === 'SL_HIT') {
+      } else if (s.status === 'REVERSAL_EXIT' || s.status === 'TP_HIT' || s.status === 'SL_HIT') {
         completedCount++;
         const closedTime = Number(s.closedAt || s.issuedAt || 0);
         const inWindow = !is24H || (closedTime > 0 && (now - closedTime <= 24 * 60 * 60 * 1000));
+        if (s.status === 'REVERSAL_EXIT' && inWindow) cumulativeR += Number(s.realizedR || 0);
         if (s.status === 'TP_HIT') {
           if (inWindow) {
             hitCount++;
@@ -3867,6 +3868,9 @@ export class TerminalUI {
 
     const statPending = document.getElementById('signals_stat_pending');
     const statActive = document.getElementById('signals_stat_active');
+    const capacity = this.callbacks.onGetTradeCapacity?.();
+    const caption = statActive?.parentElement?.querySelector('.audit-sub');
+    if (caption && capacity) caption.textContent = capacity.used + ' / ' + capacity.limit + ' position slots used';
     const statHit = document.getElementById('signals_stat_hit');
     const statAlpha = document.getElementById('signals_stat_alpha');
     const statAlphaSub = document.getElementById('signals_stat_alpha_sub');
@@ -3897,7 +3901,7 @@ export class TerminalUI {
     let displayed = signals.filter(s => {
       if (this.signalsFilter === 'PENDING') return s.status === 'PENDING';
       if (this.signalsFilter === 'ACTIVE') return s.status === 'ACTIVE';
-      if (this.signalsFilter === 'COMPLETED') return s.status === 'TP_HIT' || s.status === 'SL_HIT';
+      if (this.signalsFilter === 'COMPLETED') return s.status === 'REVERSAL_EXIT' || s.status === 'TP_HIT' || s.status === 'SL_HIT';
       if (this.signalsFilter === 'EXPIRED') return s.status === 'EXPIRED' || s.status === 'INVALIDATED';
       return true;
     });
@@ -3959,6 +3963,10 @@ export class TerminalUI {
           statusLabel = '⚡ LIMIT TRIGGERED';
           timingPillText = '🎯 Limit Triggered';
         }
+      } else if (s.status === 'REVERSAL_EXIT') {
+        statusClass = 'expired';
+        statusLabel = 'Reversal exit (' + Number(s.realizedR).toFixed(2) + 'R)';
+        timingPillText = '5m structure break';
       } else if (s.status === 'TP_HIT') {
         statusClass = 'tp';
         statusLabel = `💎 TARGET HIT (+${s.realizedR || s.riskReward}R)`;
@@ -4661,7 +4669,9 @@ export class TerminalUI {
       const isTP = trade.result === 'WIN' || trade.exitReason === 'TAKE_PROFIT' || trade.closeReason === 'TAKE_PROFIT' || trade.exitReason === 'WIN' || trade.closeReason === 'WIN';
 
       let reasonLabel;
-      if (isManual) {
+      if (trade.exitReason === 'REVERSAL_EXIT') {
+        reasonLabel = 'Reversal exit (5m structure break)';
+      } else if (isManual) {
         reasonLabel = isNetProfit ? '✋ Manual Close (Profit)' : isLoss ? '✋ Manual Close (Loss)' : '✋ Manual Close';
       } else if (isLiquidated) {
         reasonLabel = '⚠️ Liquidation Exit';

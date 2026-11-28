@@ -1,3 +1,4 @@
+import { ReversalMonitor } from './paperTrading/reversalMonitor.js';
 import { CryptoAdapter } from './adapters/cryptoAdapter.js';
 import { StrategyEngine } from './engine/strategyEngine.js';
 import { HistoricalContextEngine } from './engine/historicalEngine.js';
@@ -144,6 +145,7 @@ class App {
         this.authManager.setSupabaseConfig(url, anonKey);
       },
       onGetSignals: (filter) => this.signalEngine.getSignals(filter),
+      onGetTradeCapacity: () => ({ used: this.paperTrader.openPositions.length, limit: this.getAutoPilotSettings().maxTrades }),
       onGetActiveSignalsCount: () => this.signalEngine.getActiveCount(),
       onClearSignals: async () => {
         const now = Date.now();
@@ -439,6 +441,7 @@ class App {
 
     // 6. Setup interval for continuous position updates, evaluation & Supabase sync
     setInterval(() => this.runFullEvaluation(), 5000);
+    setInterval(() => this.reviewReversals().catch(console.warn), 30000);
     setInterval(() => {
       if (!document.hidden) {
         this.syncWithSupabaseCloud(false).catch(() => { });
@@ -665,6 +668,7 @@ class App {
             pnlUSD: Number(ct.pnl_usd || 0),
             rMultiple: Number(ct.r_multiple || 0),
             exitPrice: ct.exit_price ? Number(ct.exit_price) : null,
+            reversal: parsedMeta.reversal || null,
             exitReason: parsedMeta.exitReason || (ct.result === 'WIN' ? 'TAKE_PROFIT' : 'STOP_LOSS'),
             feesUSD: Number(parsedMeta.feesUSD || parsedMeta.totalFeesUSD || 0),
             totalFeesUSD: Number(parsedMeta.feesUSD || parsedMeta.totalFeesUSD || 0),
@@ -744,6 +748,9 @@ class App {
       // 5. Merge Alpha Signals from Cloud into SignalEngine & Auto-Pilot Desk
       if (this.signalEngine && cloudSignals.length > 0) {
         this.signalEngine.mergeCloudSignals(cloudSignals);
+        for (const closed of this.paperTrader.trades) {
+          if (closed.exitReason === 'REVERSAL_EXIT') this.signalEngine.onPositionClosed(closed);
+        }
         if (this.ui && this.ui.currentSaaSPage === 'signals') {
           this.ui.renderSignalsPage();
         }
@@ -893,6 +900,19 @@ class App {
         this.ui.updateHeaderAccountHUD(liveMetrics);
       });
     }
+  }
+
+  async reviewReversals() {
+    this.reversalMonitor ??= new ReversalMonitor();
+    await this.reversalMonitor.review(this.paperTrader, () => this.autoPilotEnabled && !this.isBooting, closed => {
+      this.markSetupExhausted(closed.asset, closed.direction, closed.entry, closed.target, 1800000);
+      this.signalEngine.onPositionClosed(closed);
+      this.updateTradeJournalAndStats();
+      this.ui.updateOpenPositions(this.paperTrader.openPositions);
+      this.ui.updateHeaderAccountHUD(this.paperTrader.getLiveEquity());
+      this.ui.showToast('Reversal exit', closed.asset + ' ' + closed.direction + ' closed after a confirmed 5m structure break.', 'warning');
+      return this.syncTradeToSupabase(closed);
+    });
   }
 
   async evaluateAsset(targetAsset) {
@@ -1656,7 +1676,15 @@ class App {
     if (!message || !message.trim()) return;
     this.ui.appendChatMessage('user', message);
 
-    const reply = await this.copilotBrain.processQuery(message);
+    const reply = await this.copilotBrain.processQuery(message, {
+      positions: this.paperTrader.openPositions,
+      maxTrades: this.getAutoPilotSettings().maxTrades,
+      signals: this.signalEngine.getSignals('ALL'),
+      trades: this.paperTrader.trades,
+      balance: this.paperTrader.balance,
+      symbols: this.cryptoAdapter.allMarkets.map(m => m.baseAsset),
+      priceFor: symbol => symbol && this.cryptoAdapter.getCurrentPrice(symbol)
+    });
     this.ui.appendChatMessage('copilot', reply);
     this.voiceAssistant.speak(reply);
   }
@@ -1846,6 +1874,7 @@ class App {
       strategyName: trade.strategy || '20x Isolated HTF-Trend Pullback',
       openedAt: openedAtTime,
       closedAt: closedAtTime,
+      reversal: trade.reversal || null,
       exitReason: trade.exitReason || trade.closeReason || (trade.result === 'WIN' ? 'TAKE_PROFIT' : (trade.result === 'LOSS' ? 'STOP_LOSS' : null)),
       feesUSD: fees,
       totalFeesUSD: fees,
@@ -1911,7 +1940,7 @@ class App {
       result: signal.status === 'TP_HIT' ? 'WIN' : (signal.status === 'SL_HIT' ? 'LOSS' : null),
       pnl_usd: 0,
       r_multiple: signal.realizedR || 0,
-      exit_price: signal.takeProfitPrice,
+      exit_price: signal.status === 'REVERSAL_EXIT' ? signal.exitPrice : signal.takeProfitPrice,
       timeframe: '5M',
       strategy: JSON.stringify(meta),
       created_at: new Date(issuedAtTime).toISOString()

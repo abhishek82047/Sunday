@@ -289,3 +289,95 @@ html[data-theme] #profile_popover_menu {
   color: var(--cyan);
   background: var(--cyan-glow);
 }
+
+/* Compact ledger and signal desks on phones. */
+@media (max-width: 767px) {
+  :is(#view_passbook, #view_signals) > div {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr);
+    align-content: start;
+    min-height: 0 !important;
+    gap: 10px !important;
+    padding: 8px 4px 18px !important;
+  }
+  :is(#view_passbook, #view_signals) .positions-header-banner {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px !important;
+    padding: 12px !important;
+    border-radius: 12px !important;
+  }
+  :is(#view_passbook, #view_signals) .positions-banner-title-group {
+    display: grid !important;
+    grid-template-columns: 30px minmax(0, 1fr);
+    align-items: start !important;
+    gap: 8px !important;
+  }
+  :is(#view_passbook, #view_signals) .positions-banner-icon {
+    width: 30px !important; height: 30px !important; font-size: 1rem !important;
+  }
+  :is(#view_passbook, #view_signals) .positions-banner-title {
+    font-size: 1.06rem !important; line-height: 1.25; letter-spacing: -.02em;
+  }
+  :is(#view_passbook, #view_signals) .positions-header-banner > div:last-child {
+    display: flex; flex-wrap: wrap; gap: 6px !important;
+  }
+  :is(#view_passbook, #view_signals) .positions-header-banner button {
+    min-height: 40px; padding: 6px 10px !important; box-shadow: none !important;
+  }
+  :is(#view_passbook, #view_signals) .passbook-audit-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    margin-block: 0 !important; gap: 6px !important;
+  }
+  :is(#view_passbook, #view_signals) .audit-stat-box {
+    min-width: 0; padding: 10px !important; gap: 4px !important;
+    border-radius: 10px !important; box-shadow: none !important;
+  }
+  :is(#view_passbook, #view_signals) .audit-val { font-size: 1.2rem !important; }
+  :is(#view_passbook, #view_signals) .passbook-type-filters {
+    width: 100%; min-width: 0; flex-wrap: nowrap !important; overflow-x: auto;
+    gap: 5px !important; justify-content: flex-start !important;
+  }
+  :is(#view_passbook, #view_signals) .passbook-filter-chip { flex: none; white-space: nowrap; }
+  #view_signals .signals-filter-bar { min-width: 0; margin-block: 0 !important; gap: 6px !important; }
+  #view_signals .signals-cards-grid { gap: 8px; }
+  #view_signals .signal-card { padding: 11px; gap: 8px; border-radius: 12px; box-shadow: none; }
+  #view_signals .signal-levels-grid { gap: 5px; }
+  #view_signals .signal-level-box { padding: 6px; overflow-wrap: anywhere; }
+  #view_passbook :is(.yearbook-heatmap-card, .yearbook-radar-widget, .passbook-monthly-card) {
+    min-width: 0; padding: 12px !important; border-radius: 12px !important;
+  }
+  #view_passbook .yearbook-header { gap: 8px !important; }
+  #view_passbook .yearbook-stats-row {
+    display: grid !important; width: 100%; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 5px !important;
+  }
+  #view_passbook .yearbook-stat-item { white-space: normal; padding: 5px 7px !important; }
+  #view_passbook .yearbook-cockpit-split { gap: 10px !important; }
+  #view_passbook .yearbook-grid-scroll-wrap { width: 100%; overflow-x: auto !important; }
+  #view_passbook .passbook-txn-header {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 10px !important;
+  }
+  #view_passbook .txn-left-col { flex: 1 1 135px; min-width: 0; gap: 6px !important; }
+  #view_passbook .txn-right-col { margin-inline-start: auto; }
+  #view_passbook .txn-asset-row { flex-wrap: wrap; }
+}
+
+@media (max-width: 767px) {
+  /* Let the page scroll; its grid must retain the height of every signal row. */
+  #view_signals > .signals-page-container {
+    flex: none !important;
+    height: auto !important;
+    grid-auto-rows: max-content;
+  }
+  #view_signals .signals-header-banner {
+    min-height: max-content;
+    justify-content: stretch !important;
+    grid-template-rows: auto auto;
+  }
+  #view_signals .positions-banner-title-group > div:last-child { min-width: 0; }
+  #view_signals .positions-banner-title {
+    white-space: normal !important;
+    overflow-wrap: anywhere;
+    line-height: 1.35 !important;
+  }
+}

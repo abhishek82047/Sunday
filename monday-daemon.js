@@ -12,6 +12,7 @@
  * 7. Real-Time Supabase Cloud Sync + 60s Keep-Alive Heartbeat
  */
 
+import { ReversalMonitor } from './js/paperTrading/reversalMonitor.js';
 import fs from 'fs';
 import path from 'path';
 import http from 'http';
@@ -821,12 +822,14 @@ class MondayAutoPilotDaemon {
       aiReasoning: `Autonomous Radar Fill Execution. Entry: $${entry}, SL: $${stopLoss}, TP: $${target}, RR: 1:${rr}.`
     });
 
+    if (!trade) return;
     this.log(`✅ [TRADE OPENED ON DESK] ID: ${trade.id} | ${sig.asset} ${dir} | Margin: $${marginUSD}`, 'SUCCESS');
     await this.syncTradeToSupabase(trade);
   }
 
   async executeAutonomousTrade(asset, strategyResult, currentPrice) {
     const settings = this.getAutoPilotSettings();
+    if (this.paperTrader.openPositions.length >= settings.maxTrades || this.paperTrader.openPositions.some(p => p.asset === asset)) return;
     const dir = strategyResult.direction || 'LONG';
     const levels = strategyResult.levels;
     const lev = settings.leverage || 20;
@@ -875,6 +878,7 @@ class MondayAutoPilotDaemon {
       aiReasoning: `Autonomous 1:${levels.rrRatio} RR execution. Entry: $${levels.entry}, SL: $${levels.stopLoss}, TP: $${levels.target}.`
     });
 
+    if (!trade) return;
     this.log(`✅ [TRADE OPENED] ID: ${trade.id} | ${asset} ${dir} | Margin: $${marginUSD}`, 'SUCCESS');
     await this.syncTradeToSupabase(trade);
   }
@@ -900,7 +904,10 @@ class MondayAutoPilotDaemon {
         r_multiple: trade.rMultiple || 0,
         exit_price: trade.exitPrice || null,
         timeframe: '5M',
-        strategy: '20x Isolated HTF-Trend Pullback'
+        strategy: trade.exitReason === 'REVERSAL_EXIT' ? JSON.stringify({
+          exitReason: trade.exitReason, reversal: trade.reversal, openedAt: trade.openedAt,
+          closedAt: trade.closedAt, feesUSD: trade.feesUSD, grossPnLUSD: trade.grossPnLUSD
+        }) : '20x Isolated HTF-Trend Pullback'
       };
 
       await fetch(`${SUPABASE_URL}/rest/v1/paper_trades`, {
@@ -935,11 +942,30 @@ class MondayAutoPilotDaemon {
     }, this.scanIntervalMs);
   }
 
+  async reviewReversals() {
+    this.reversalMonitor ??= new ReversalMonitor();
+    const enabled = () => this.autoPilotEnabled === true && this.getAutoPilotSettings().autoPilotEnabled !== false;
+    await this.reversalMonitor.review(this.paperTrader, enabled, async closed => {
+      const key = [closed.asset, closed.direction, this.formatDynamicPrice(closed.entry), this.formatDynamicPrice(closed.target)].join('_');
+      this.exhaustedSetups.set(key, Date.now() + 1800000);
+      await this.syncTradeToSupabase(closed);
+      const signal = this.activeRadarSignals.find(s => s.status === 'SIGNAL_ACTIVE' &&
+        s.asset === closed.asset && s.direction === closed.direction &&
+        Number(s.entry_price) === Number(closed.entry) && Number(s.target_price) === Number(closed.target));
+      if (signal) {
+        Object.assign(signal, { status: 'SIGNAL_REVERSAL_EXIT', closed_at: closed.closedAt,
+          exit_price: closed.exitPrice, r_multiple: closed.rMultiple, pnl_usd: closed.pnlUSD, result: closed.result });
+        await this.pushRadarUpdates([signal]);
+      }
+    });
+  }
+
   startHeartbeatLoop() {
     // Periodic dynamic settings sync & anti-freeze watchdog every 30 seconds
     setInterval(() => {
       this.syncSettingsFromSupabase().catch(() => {});
       this.runPositionWatchdog().catch(() => {});
+      this.reviewReversals().catch(err => this.log(err.message, 'WARN'));
       this.auditRadarSignals().catch(() => {});
     }, this.settingsSyncIntervalMs);
 

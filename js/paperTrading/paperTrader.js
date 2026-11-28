@@ -298,6 +298,9 @@ export class PaperTrader {
     // RAPID CHURN CIRCUIT BREAKER: Strict frequency guard (Max 2 trades per asset in 5 minutes)
     const now = Date.now();
     const recentSameAssetTrades = this.trades.filter(t => t.asset === asset && (now - (t.closedAt || t.openedAt || 0)) < 300000);
+    if (this.trades.some(t => t.exitReason === 'REVERSAL_EXIT' && t.asset === asset &&
+        t.direction === dir && Number(t.entry) === entryNum && Number(t.target) === tpNum &&
+        now - t.closedAt < 1800000)) return null;
     if (recentSameAssetTrades.length >= 2) {
       console.warn(`[Rapid Churn Circuit Breaker] Order rejected for ${asset}: Maximum frequency limit (2 trades in 5 min) reached.`);
       return null;
@@ -449,7 +452,7 @@ export class PaperTrader {
     return closedList;
   }
 
-  closePosition(tradeId, resultType = 'MANUAL', exitPrice = null, exitTimestamp = null) {
+  closePosition(tradeId, resultType = 'MANUAL', exitPrice = null, exitTimestamp = null, confirmation = null) {
     const index = this.openPositions.findIndex(p => p.id === tradeId);
     if (index === -1) return null;
 
@@ -469,7 +472,7 @@ export class PaperTrader {
       canonicalReason = 'LIQUIDATED';
       baseResult = 'LIQUIDATED';
     } else {
-      canonicalReason = 'MANUAL';
+      canonicalReason = resultType === 'REVERSAL_EXIT' ? resultType : 'MANUAL';
       baseResult = 'MANUAL';
     }
 
@@ -545,6 +548,7 @@ export class PaperTrader {
       status: 'CLOSED',
       result,
       exitReason: canonicalReason,
+      ...(confirmation && { reversal: confirmation }),
       closeReason: canonicalReason,
       exitPrice: actualExit < 0.1 ? +actualExit.toFixed(6) : actualExit < 1 ? +actualExit.toFixed(5) : actualExit < 10 ? +actualExit.toFixed(4) : +actualExit.toFixed(2),
       grossPnlUSD,
